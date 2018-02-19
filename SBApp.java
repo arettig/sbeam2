@@ -13,7 +13,6 @@ import javax.swing.JFileChooser;
 import javax.swing.JInternalFrame;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
-import sbeam.POE_data;
 import sbeam2.gui.POEView;
 import sbeam2.gui.POE_Info_Dialog_1;
 import sbeam2.POEData;
