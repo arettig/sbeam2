@@ -1,5 +1,6 @@
 package sbeam2;
 
+import java.awt.Dimension;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -9,8 +10,10 @@ import java.util.ArrayList;
 import java.util.Scanner;
 
 import javax.swing.JFileChooser;
+import javax.swing.JInternalFrame;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
+import sbeam.POE_data;
 import sbeam2.gui.POEView;
 import sbeam2.gui.POE_Info_Dialog_1;
 import sbeam2.POEData;
@@ -241,7 +244,7 @@ public class SBApp {
 		for (i = 0; i < num_loaded_tofs; i++) {
 			// Get a line of "\n"
 			temp_string = is.nextLine();
-			new_tof = TOFData.in(is);
+			new_tof = TOFData.in(is, this);
 			tofs.add(new_tof);
 		}
 
@@ -284,6 +287,41 @@ public class SBApp {
 	
 	
 	
+	
+	
+	
+	
+	
+	/* BEGIN INSTRUMENTAL PARAMS */
+	public void SetInstrumentalParameters(){
+		setupInstParam();
+	}
+	
+	public void setupInstParam(){
+		Instr_Param_Dialog instr_params = new Instr_Param_Dialog(mf, instrParam);
+		instr_params.Execute();
+		
+		if(!instr_params.ID){
+			return;
+		}
+		
+		instrParam.ionFlightConst = Float.parseFloat(instr_params.GetIonFlightConst());
+		instrParam.ionizerLen = Float.parseFloat(instr_params.GetIonizerLen());
+		instrParam.flightLen = Float.parseFloat(instr_params.GetFlightLen());
+		instrParam.beamAng = Float.parseFloat(instr_params.GetBeamAng());
+		instrParam.detectAng = Float.parseFloat(instr_params.GetDetectAng());
+		instrParam.isNumDensity = instr_params.isNumDensity();
+		
+		InstParamsSet = true;
+	}
+	
+	
+	
+	
+	
+	
+	
+	
 	/* BEGIN TOF METHODS*/
 	public void DisplayNewTOF(){
 		//let user choose a TOF
@@ -294,7 +332,7 @@ public class SBApp {
 		}
 		
 		File f = fc.getSelectedFile();
-		TOFData time_of_flight = new TOFData();
+		TOFData time_of_flight = new TOFData(this);
 
 		String extension;
 		extension = f.getName().substring(f.getName().length() - 4);
@@ -377,6 +415,7 @@ public class SBApp {
 		    time_of_flight.is_Visible = -1;  //CHANGE: change var when visible
 		}
 	}
+	
 	
 	
 	
@@ -470,6 +509,65 @@ public class SBApp {
 
 	}
 	
+	public void DisplayStoredPE(){
+		String[] poeList = getAllPOEList();
+		List_Dialog poe_list_dialog = new List_Dialog(mf, poeList, 1);
+		poe_list_dialog.SetCaption("Choose a POE to open:");
+
+		poe_list_dialog.Execute();
+		// check
+		if(!poe_list_dialog.ID) return;
+		
+		POEData poe = poes.get(poe_list_dialog.GetChosenIndex()[0]);
+
+		//create a view for poe
+		POEView p = new POEView(this, mf);
+		p.addPOEToView(poe);
+		
+		poes.add(poe);
+		poeViews.add(p);
+		
+		poe.is_Visible = -1;	//CHANGE: visibility = -1 upon new display
+		p.Execute();
+	}
+	
+	public void OutputPEtoFile() {
+		//choose save location
+		int[] index_array;
+		JFileChooser fc = new JFileChooser();
+		fc.setFileFilter(new FileNameExtensionFilter("UFC file", "ufc"));
+		int returnVal = fc.showSaveDialog(mf);
+		if (returnVal != JFileChooser.APPROVE_OPTION) {
+			return;
+		}
+		File f = fc.getSelectedFile();
+		if (!f.getName().endsWith(".poe")) {
+			f = new File(f.getAbsolutePath() + ".poe");
+		}
+
+		// let user choose poe
+		String[] poeList = getAllPOEList();
+		List_Dialog poe_list_dialog = new List_Dialog(mf, poeList, 1);
+		poe_list_dialog.SetCaption("Choose a POE to open:");
+		poe_list_dialog.Execute();
+		if(!poe_list_dialog.ID) return;
+		POEData poe = poes.get(poe_list_dialog.GetChosenIndex()[0]);
+
+		try {
+			f.createNewFile();
+			FileWriter fw;
+			fw = new FileWriter(f);
+			BufferedWriter bw = new BufferedWriter(fw);
+			poe.SaveAsPOEFile(bw);
+
+			bw.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	
 	
 	
 	
@@ -500,6 +598,23 @@ public class SBApp {
 		if(!calc_dialog.ID) return;
 		
 		calculation.CalcNumber = calcs.size()-1;
+	}
+	
+	public void ChangeCalculationParameters(){
+		String[] calcList = getAllCalcList();
+		List_Dialog calc_list_dialog = new List_Dialog(mf, calcList, 1);
+		calc_list_dialog.SetCaption("Choose a calculation to edit:");
+
+		calc_list_dialog.Execute();
+		if (!calc_list_dialog.ID) return;
+		CalcData calc = calcs.get(calc_list_dialog.GetChosenIndex()[0]);
+		
+		CalculateMainDialog calcDialog = new CalculateMainDialog(mf, this);
+		calcDialog.DetachOldTOFs(true);
+		calcDialog.SetDialogData(calc);
+		calcDialog.SetAreInstParamsSet(InstParamsSet);
+		calcDialog.Execute();
+		if(!calcDialog.ID) return;
 	}
 	
 	public void CalculateTOFs(CalcData calc){
@@ -534,24 +649,98 @@ public class SBApp {
 	
 	
 	
-	public void setupInstParam(){
-		Instr_Param_Dialog instr_params = new Instr_Param_Dialog(mf, instrParam);
-		instr_params.Execute();
-		
-		if(!instr_params.ID){
+	
+	
+	
+	
+	
+	/* BEGIN WINDOW METHODS */
+	
+	public void TileVertically() {
+		// How many frames do we have?
+		ArrayList<JInternalFrame> allframes = mf.internalFrames;
+		int count = allframes.size();
+		if (count == 0)
 			return;
+
+		// Determine the necessary grid size
+		int sqrt = (int) Math.sqrt(count);
+		int rows = sqrt;
+		int cols = sqrt;
+		if (rows * cols < count) {
+			rows++;
+			if (rows * cols < count) {
+				cols++;
+			}
 		}
-		
-		instrParam.ionFlightConst = Float.parseFloat(instr_params.GetIonFlightConst());
-		instrParam.ionizerLen = Float.parseFloat(instr_params.GetIonizerLen());
-		instrParam.flightLen = Float.parseFloat(instr_params.GetFlightLen());
-		instrParam.beamAng = Float.parseFloat(instr_params.GetBeamAng());
-		instrParam.detectAng = Float.parseFloat(instr_params.GetDetectAng());
-		instrParam.isNumDensity = instr_params.isNumDensity();
-		
-		InstParamsSet = true;
+
+		// Define some initial values for size & location.
+		Dimension size = mf.pane.getRootPane().getSize();
+
+		int w = size.width / cols;
+		int h = (size.height-20) / rows;
+		int x = 0;
+		int y = 0;
+
+		// Iterate over the frames, deiconifying any iconified frames and then
+		// relocating & resizing each.
+		for (int i = 0; i < rows; i++) {
+			for (int j = 0; j < cols && ((i * cols) + j < count); j++) {
+				JInternalFrame f = allframes.get((i * cols) + j);
+
+				f.setLocation(x, y);
+				f.setSize(w+f.getInsets().left+f.getInsets().right, h+f.getInsets().bottom);
+				x += w;
+			}
+			y += h; // start the next row
+			x = 0;
+		}
+
 	}
 	
+	public void TileHorizontally() {
+		// How many frames do we have?
+		ArrayList<JInternalFrame> allframes = mf.internalFrames;
+		int count = allframes.size();
+		if (count == 0)
+			return;
+
+		// Determine the necessary grid size
+		int sqrt = (int) Math.sqrt(count);
+		int rows = sqrt;
+		int cols = sqrt;
+		if (rows * cols < count) {
+			cols++;
+			if (rows * cols < count) {
+				rows++;
+			}
+		}
+
+		// Define some initial values for size & location.
+		Dimension size = mf.pane.getRootPane().getSize();
+
+		int w = size.width / cols;
+		int h = (size.height-20) / rows;
+		int x = 0;
+		int y = 0;
+
+		// Iterate over the frames, deiconifying any iconified frames and then
+		// relocating & resizing each.
+		for (int i = 0; i < rows; i++) {
+			for (int j = 0; j < cols && ((i * cols) + j < count); j++) {
+				JInternalFrame f = allframes.get((i * cols) + j);
+
+				f.setLocation(x, y);
+				f.setSize(w+f.getInsets().left+f.getInsets().right, h+f.getInsets().bottom);
+				x += w;
+			}
+			y += h; // start the next row
+			x = 0;
+		}
+	}
+	
+	
+
 	
 	
 	
@@ -579,4 +768,19 @@ public class SBApp {
 		return list;
 	}
 	
+	protected String[] getAllPOEList(){
+		String[] list = new String[poes.size()];
+		for(int i=0; i < poes.size(); i++){
+			list[i] = poes.get(i).title;
+		}
+		return list;
+	}
+	
+	protected String[] getAllCalcList(){
+		String[] list = new String[calcs.size()];
+		for(int i=0; i < calcs.size(); i++){
+			list[i] = calcs.get(i).title;
+		}
+		return list;
+	}
 }

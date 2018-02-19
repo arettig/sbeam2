@@ -110,6 +110,16 @@ public class POEData {
 		}
 	}
 	
+	public float maxValue(){
+		float maxVal = 0;
+		for(int i = 0; i < num_points; i++){
+			if(poe_amplitudes[i] > maxVal){
+				maxVal = poe_amplitudes[i];
+			}
+		}
+		return maxVal;
+	}
+	
 	public void updatePOE(float x, float newY){
 		int index = (int) ((x - energy_values[0]) / energy_spacing); //find which point has changed 		
  		poe_amplitudes[index] = newY; //change poe data
@@ -134,7 +144,6 @@ public class POEData {
 		for(int i = 0; i < AssociatedCalcs.size(); i++)
 		{
 			CalcData calc = AssociatedCalcs.get(i);
-			System.out.println("About to update calculation: " + calc.title);
 			for(int j = 0; j < calc.calculated_tofs.length; j++){
 				calc.calculated_tofs[j].AddOnDeltaTOF(new_amplitude, is_endpoint);
 			}
@@ -191,7 +200,6 @@ public class POEData {
 		} else {
 			poe.is_Visible = -2;
 		}
-		System.out.println("Visibility: " + poe.is_Visible);
 		// END CHANGE
 		is.nextLine();
 

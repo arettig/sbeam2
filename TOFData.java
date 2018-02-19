@@ -68,12 +68,17 @@ public class TOFData {
 	public boolean TOF_has_been_altered;
 	public int num_points_unaltered_tof;
 	public float unaltered_dwell;
+	
+	
+	
 	public ArrayList<TOFView> AssociatedTOFViews;
+	private SBApp sb;
 	
 	
 	
-	public TOFData() {
+	public TOFData(SBApp app) {
 		// TODO Auto-generated constructor stub
+		sb = app;
 		is_real_TOF = true;
 		is_being_changed = false;
 		delta_tofs = null;
@@ -242,7 +247,7 @@ public class TOFData {
 		
 		temporary_scale = tof_input_dialog.GetOffsetScale();
 		offset_scale = temporary_scale;
-		//time_of_flight.SetIonFlightTime(document.GetIonFlightConst());	
+		SetIonFlightTime(sb.instrParam.ionFlightConst);	
 	}
 	
 	public void loadFromInputDialog(TOF_Edit_Dialog_2 tid){
@@ -375,7 +380,6 @@ public class TOFData {
 		is_being_changed = false;
 		
 		
-		System.out.println("Calculated changes, now need to update views");
 		//change all the views
 		for(int viewInd = 0; viewInd < AssociatedTOFViews.size(); viewInd++){
 			TOFView view = AssociatedTOFViews.get(viewInd);
@@ -633,7 +637,7 @@ public class TOFData {
 		return os;
 	}
 	
-	public static TOFData in(Scanner is) {
+	public static TOFData in(Scanner is, SBApp sb) {
 		int i, j, k, number_of_channels;
 		int red, green, blue;
 		String title_temp;
@@ -645,10 +649,9 @@ public class TOFData {
 		String[] poe_titles;
 		POECalcData[] calc_data_array;
 		Color[] temp_color_array;
-		TOFData tof = new TOFData();
+		TOFData tof = new TOFData(sb);
 
 		tof.title = is.nextLine();
-		System.out.println("Loading in tof: " + tof.title);
 		tof.TOF_num = is.nextInt();
 		tof.lab_angle = is.nextFloat();
 		if(is.hasNextBoolean()){
@@ -792,7 +795,6 @@ public class TOFData {
 				// to the calculation.)
 				is.nextLine();
 				tof.calculation_title = is.nextLine();
-				System.out.println("Loading in detached tof: " + tof.calculation_title);
 
 				tof.detach_num_poes = is.nextInt();
 				poe_titles = new String[tof.detach_num_poes];
@@ -806,7 +808,6 @@ public class TOFData {
 					title_temp = is.nextLine();
 
 					poe_titles[i] = title_temp;
-					//System.out.println("title: " +title_temp);
 					calc_data_array[i] = new POECalcData();
 					calc_data_array[i].is_included = (is.hasNextBoolean()) ? is.nextBoolean(): ((is.nextInt() == 1) ? true:false);
 					if (calc_data_array[i].is_included) {

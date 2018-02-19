@@ -1109,7 +1109,7 @@ public class CalcData {
 				cos_this_theta_lab = cos_theta_lab[tof_num];
 				sin_this_theta_lab = sin_theta_lab[tof_num];
 
-				this_TOF = new TOFData();
+				this_TOF = new TOFData(sb);
 				new_calc_tofs[tof_num] = this_TOF;
 				this_TOF.is_real_TOF = false;
 				

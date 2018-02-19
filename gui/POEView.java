@@ -90,7 +90,6 @@ public class POEView extends JInternalFrame implements InternalFrameListener, Ch
  		chartPanel.setPopupMenu(null);
  		chartPanel.setDomainZoomable(false);
  		chartPanel.setRangeZoomable(false);
-
 	}
 	
  	public void Execute(){
@@ -99,6 +98,7 @@ public class POEView extends JInternalFrame implements InternalFrameListener, Ch
 		this.pack();
 		this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 		this.setFocusable(true);
+		this.setClosable(true);
 		this.setEnabled(true);
 		this.setVisible(true);
 		this.setResizable(true);
@@ -115,6 +115,7 @@ public class POEView extends JInternalFrame implements InternalFrameListener, Ch
 		POEDataset.addSeries(poeSeries);
 		
 		poe.AssociatedPOEViews.add(this);
+		this.title += (this.title.isEmpty() ? "" : " && ") + poe.title;
 	}
  	
 	
@@ -133,6 +134,13 @@ public class POEView extends JInternalFrame implements InternalFrameListener, Ch
 	@Override
 	public void internalFrameClosing(InternalFrameEvent e) {
 		// TODO Auto-generated method stub
+		// TODO Auto-generated method stub
+		for (int i = 0; i < associatedPOEs.size(); i++) {
+			associatedPOEs.get(i).AssociatedPOEViews.remove(this);
+			// Each TOF can only be in view once!
+			associatedPOEs.get(i).is_Visible = -2;// CHANGE:set not visible
+		}
+		parent.internalClosed(this);		
 		
 	}
 
@@ -175,10 +183,22 @@ public class POEView extends JInternalFrame implements InternalFrameListener, Ch
 			float x = series.getDataItem(dragPoint.getItem()).getX().floatValue();
 			float newY = series.getDataItem(dragPoint.getItem()).getY().floatValue();
 			POEData poe = associatedPOEs.get(0); //probably fix this
-			int index = (int) ((x - poe.energy_values[0]) / poe.energy_spacing); //find which point has changed 		
+			int index = (int) ((x - poe.energy_values[0]) / poe.energy_spacing); //find which point has changed
+			
+			//extrema handling
+			if(newY < 0f){
+				newY = 0;
+			}
+			
+			
 			boolean endpoint = index == 0 || index == poe.num_points-1;
 	 		poe.updatePOE(x, newY);
 	 		poe.FindNewTOFs(newY, endpoint);
+	 		
+	 		//scale the axis
+	 		float maximum = poe.maxValue();
+			if(maximum == 0.0f) maximum = 1.0f;
+			POEPlot.getRangeAxis().setRange(0, maximum * 1.1);
 			
 	 		//stop changing this point
 			dragPoint = null;
@@ -202,9 +222,8 @@ public class POEView extends JInternalFrame implements InternalFrameListener, Ch
 			double yVal = POEPlot.getRangeAxis().java2DToValue(e.getTrigger().getY(), chartPanel.getChartRenderingInfo().getPlotInfo().getDataArea(), POEPlot.getRangeAxisEdge());
 			XYSeries series = POEDataset.getSeries(dragPoint.getSeriesIndex());
 			XYDataItem item = series.getDataItem(dragPoint.getItem());
-			//series.delete(dragPoint.getSeriesIndex(),dragPoint.getItem());
 			item.setY(yVal);
-			//series.add(item);
+			chartPanel.repaint();
 		}
 		
 	}

@@ -58,10 +58,10 @@ public class MainFrame extends JFrame implements ActionListener, FocusListener{
 	private JMenu tof, poe, ang;
 	private JMenuItem[] tempItems;
 	private JMenu tempMenu;
-	protected JDesktopPane pane;
+	public JDesktopPane pane;
 	protected JInternalFrame focused;
 	protected Logger logMe;
-	ArrayList<JInternalFrame> internalFrames = new ArrayList<JInternalFrame>();
+	public ArrayList<JInternalFrame> internalFrames = new ArrayList<JInternalFrame>();
 	ArrayList<JDialog> dialogs = new ArrayList<JDialog>();
 	
 	public MainFrame() throws HeadlessException {

@@ -16,6 +16,7 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.xy.XYItemRenderer;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
@@ -31,11 +32,13 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 	protected MainFrame mainWindow;
 	protected SBApp sb;
 	
-	protected XYSeriesCollection realTOFDataset;
+	protected XYSeriesCollection TOFDataset;
 	protected XYPlot TOFPlot;
 	protected ChartPanel chartPanel;
-	protected JFreeChart xylineChart;
+	protected JFreeChart TOFChart;
 	protected XYLineAndShapeRenderer renderer;
+	
+	protected ArrayList<Boolean> isReal;
 
 	public TOFView(SBApp app, MainFrame parent) {
 		// TODO Auto-generated constructor stub
@@ -47,25 +50,19 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 		this.addMouseMotionListener(this);
 		
 		associatedTOFs = new ArrayList<TOFData>();
+		isReal = new ArrayList<Boolean>();
 		this.addInternalFrameListener(this);
 		
-		realTOFDataset = new XYSeriesCollection( );
-		xylineChart = ChartFactory.createXYLineChart(
-		         null,
-		         "time (us)" ,
-		         "Counts" ,
-		         realTOFDataset ,
-		         PlotOrientation.VERTICAL ,
-		         true , true , false);
-		chartPanel = new ChartPanel( xylineChart );
-		TOFPlot = xylineChart.getXYPlot( );
-		renderer = new XYLineAndShapeRenderer( );
-		TOFPlot.setRenderer(renderer); 
+		TOFDataset = new XYSeriesCollection( );
+		TOFChart = ChartFactory.createXYLineChart(null, "time", "Intensity (arb.)", TOFDataset, PlotOrientation.VERTICAL, false, false, false);
+		TOFPlot = TOFChart.getXYPlot();
+		chartPanel = new ChartPanel(TOFChart);
+		
 		setContentPane(chartPanel); 
 	}
 
 	public void setupWindow(){
-		xylineChart.removeLegend();
+		//xylineChart.removeLegend();
 	}
 	
 	public void execute() {
@@ -75,6 +72,7 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 		this.setPreferredSize(new Dimension(400, 200));
 		this.pack();
 		this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+		this.setClosable(true);
 		this.setFocusable(true);
 		this.setEnabled(true);
 		this.setVisible(true);
@@ -87,9 +85,12 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 		for(int i=0; i < tof.actual_flight_time_micro.length; i++){
 			tofSeries.add(tof.actual_flight_time_micro[i], tof.channel_counts[i]);
 		}
-		realTOFDataset.addSeries(tofSeries);
+		TOFDataset.addSeries(tofSeries);
+		((XYLineAndShapeRenderer)TOFPlot.getRenderer()).setSeriesLinesVisible(TOFDataset.getSeriesCount()-1, false);
+		((XYLineAndShapeRenderer)TOFPlot.getRenderer()).setSeriesShapesVisible(TOFDataset.getSeriesCount()-1, true);
 		
 		tof.AssociatedTOFViews.add(this);
+		this.title += (this.title.isEmpty() ? "" : " && ") + tof.title;
 	}
 	
 	public void addCalcTOFToView(TOFData tof){
@@ -104,9 +105,12 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 		for(int i=0; i < tof.actual_flight_time_micro.length; i++){
 			tofSeries.add(tof.actual_flight_time_micro[i], tof.channel_counts[i]*scaling);
 		}
-		realTOFDataset.addSeries(tofSeries);
-		
+		TOFDataset.addSeries(tofSeries);
+		((XYLineAndShapeRenderer)TOFPlot.getRenderer()).setSeriesLinesVisible(TOFDataset.getSeriesCount()-1, true);
+		((XYLineAndShapeRenderer)TOFPlot.getRenderer()).setSeriesShapesVisible(TOFDataset.getSeriesCount()-1, false);
+
 		tof.AssociatedTOFViews.add(this);
+		this.title += (this.title.isEmpty() ? "" : " && ") + tof.title;
 	}
 	
 	public void reloadCalcTOF(TOFData tof){
@@ -117,7 +121,7 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 	}
 	
 	public void removeTOFFromView(int index){
-		realTOFDataset.removeSeries(index);
+		TOFDataset.removeSeries(index);
 		associatedTOFs.get(index).AssociatedTOFViews.remove(this);
 		associatedTOFs.remove(index);
 	}
@@ -262,7 +266,12 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 	@Override
 	public void internalFrameClosing(InternalFrameEvent e) {
 		// TODO Auto-generated method stub
-		
+		for (int i = 0; i < associatedTOFs.size(); i++) {
+			associatedTOFs.get(i).AssociatedTOFViews.remove(this);
+			// Each TOF can only be in view once!
+			associatedTOFs.get(i).is_Visible = -2;// CHANGE:set not visible
+		}
+		mainWindow.internalClosed(this);
 	}
 
 	@Override
