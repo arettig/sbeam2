@@ -1,20 +1,11 @@
 package sbeam2.gui;
 
-import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.Point;
-import java.awt.Rectangle;
+
 import java.awt.event.MouseEvent;
-import java.awt.geom.AffineTransform;
 import java.util.ArrayList;
-import java.util.Iterator;
 
 import javax.swing.JInternalFrame;
-import javax.swing.JLabel;
 import javax.swing.event.InternalFrameEvent;
 import javax.swing.event.InternalFrameListener;
 import javax.swing.event.MouseInputListener;
@@ -26,7 +17,6 @@ import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
-import org.jfree.data.xy.DefaultTableXYDataset;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 
@@ -98,35 +88,53 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 			tofSeries.add(tof.actual_flight_time_micro[i], tof.channel_counts[i]);
 		}
 		realTOFDataset.addSeries(tofSeries);
+		
+		tof.AssociatedTOFViews.add(this);
 	}
 	
-	public void removeTOFFromView(String title){		
-		int index = 0;
-		Iterator<XYSeries> it = realTOFDataset.getSeries().iterator();
-		while(it.hasNext()){
-			XYSeries series = it.next();
-			if(series.getDescription().equals(title))
-			{
-				break;
-			}
-			index++;
-		}
+	public void addCalcTOFToView(TOFData tof){
+		associatedTOFs.add(tof);
 		
-		if(index > associatedTOFs.size()){
-			//error
-			System.out.println("Error - couldn't find TOF to remove");
-			return;
-		}
+		//get scaling factor
+		float[] maxMin = tof.GetMaxMinCounts(tof.actual_flight_time_micro[0], tof.actual_flight_time_micro[tof.actual_flight_time_micro.length-1]);
+		float[] totalMaxMin = associatedTOFs.get(0).GetMaxMinCounts(associatedTOFs.get(0).actual_flight_time_micro[0], associatedTOFs.get(0).actual_flight_time_micro[tof.actual_flight_time_micro.length-1]);
+		float scaling = totalMaxMin[0]/maxMin[0];
 		
+		XYSeries tofSeries = new XYSeries(tof.title);
+		for(int i=0; i < tof.actual_flight_time_micro.length; i++){
+			tofSeries.add(tof.actual_flight_time_micro[i], tof.channel_counts[i]*scaling);
+		}
+		realTOFDataset.addSeries(tofSeries);
+		
+		tof.AssociatedTOFViews.add(this);
+	}
+	
+	public void reloadCalcTOF(TOFData tof){
+		int index = associatedTOFs.indexOf(tof);
+		System.out.println("Reloading series at index " + index);
+		removeTOFFromView(index);
+		addCalcTOFToView(tof);
+	}
+	
+	public void removeTOFFromView(int index){
 		realTOFDataset.removeSeries(index);
+		associatedTOFs.get(index).AssociatedTOFViews.remove(this);
 		associatedTOFs.remove(index);
 	}
 	
 	
-	protected String[] getTOFList(){
+	protected String[] getAllTOFList(){
 		String[] list = new String[sb.tofs.size()];
 		for(int i=0; i < sb.tofs.size(); i++){
 			list[i] = sb.tofs.get(i).title;
+		}
+		return list;
+	}
+	
+	protected String[] getDispTOFList(){
+		String[] list = new String[associatedTOFs.size()];
+		for(int i=0; i < associatedTOFs.size(); i++){
+			list[i] = associatedTOFs.get(i).title;
 		}
 		return list;
 	}
@@ -135,14 +143,12 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 	
 	
 	
-	
-	
 	/* MENU ITEMS */
 	protected void AppendLoadedTOF()
 	{
-		String[] tofList = getTOFList();
+		String[] tofList = getAllTOFList();
 		List_Dialog tof_list_dialog = new List_Dialog(mainWindow, tofList, 1);
-		tof_list_dialog.SetCaption("Choose a TOF:");
+		tof_list_dialog.SetCaption("Choose a TOF to append:");
 
 		tof_list_dialog.Execute();
 		// check
@@ -151,22 +157,36 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 		}
 		
 		TOFData time_of_flight = sb.tofs.get(tof_list_dialog.GetChosenIndex()[0]);
-		System.out.println("Chose " + time_of_flight.title);
+		System.out.println("Adding " + time_of_flight.title);
+		if(time_of_flight.is_real_TOF){
+			addTOFToView(time_of_flight);
+		}else{
+			addCalcTOFToView(time_of_flight);
+		}
+
+	}
+	
+	protected void RemoveTOFFromDisplay() {
+		String[] tofList = getDispTOFList();
+		List_Dialog tof_list_dialog = new List_Dialog(mainWindow, tofList, 1);
+		tof_list_dialog.SetCaption("Choose a TOF to remove:");
+
+		tof_list_dialog = new List_Dialog(mainWindow, tofList, 1);
+
+		tof_list_dialog.Execute();
+		if(!tof_list_dialog.ID) return; //check if ok clicked
+
+		int chosen_index = tof_list_dialog.GetChosenIndex()[0];
 		
-		addTOFToView(time_of_flight);
+		removeTOFFromView(chosen_index);
+		
+		//fix residuals here
+
 	}
 	
 	protected void AxisRange(){
-		int number_of_tofs = associatedTOFs.size();
-		int i;
-		float[] time_pointer;
-		float min_time = 0, max_time = 0;
-
-
-		//param_dialog.Create();
 		Param_Dialog param_dialog = new Param_Dialog(mainWindow, 1);
 		
-
 		param_dialog.SetDefault1("0.0");
 		param_dialog.SetDefault2("1.0");
 		param_dialog.SetValue1("" + (-Float.MIN_VALUE));

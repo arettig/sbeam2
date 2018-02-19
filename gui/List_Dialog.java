@@ -58,7 +58,7 @@ public class List_Dialog extends JDialog implements ActionListener {
 		text_of_list = ls;
 	}
 
-	void SetCaption(String input_text) {
+	public void SetCaption(String input_text) {
 		dialog_caption = input_text;
 	}
 
@@ -66,7 +66,7 @@ public class List_Dialog extends JDialog implements ActionListener {
 		text_of_list = list_text;
 	}
 
-	int[] GetChosenIndex() {
+	public int[] GetChosenIndex() {
 		return list_box.getSelectedIndices();
 	}
 
