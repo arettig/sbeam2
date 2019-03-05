@@ -56,7 +56,7 @@ public class TOFData {
 	
 	
 	// Information stored for calculated TOF
-	public POECalcData[] calc_data_for_poes;
+	public ArrayList<POECalcData> calc_data_for_poes;
 	public int num_beam_angle_segs, num_det_angle_segs, num_lab_vel_segs;
 	public int num_ionization_segs, num_beam_vel_segs;
 	public String calculation_title;
@@ -170,7 +170,27 @@ public class TOFData {
 				}
 			} else {
 				first = true;
-				for (i = 0; i < 5; i++) {
+				
+				is.nextLine(); // comment line
+				
+				//parse dwell
+				String[] dwellLine = is.nextLine().split("\\s+");
+				float initialDwell = Float.parseFloat(dwellLine[2]);
+				String dwellScaleParse = dwellLine[dwellLine.length-1];
+				if(dwellScaleParse.equals("ms")){
+					dwell_scale = scale.ms;
+				}else if(dwellScaleParse.equals("us")){
+					dwell_scale = scale.μs;
+				}else if(dwellScaleParse.equals("ns")){
+					dwell_scale = scale.ns;
+				}else if(dwellScaleParse.equals("ps")){
+					dwell_scale = scale.ps;
+				}else{
+					System.out.println("Couldn't read dwell scale, defaulting to us");
+					dwell_scale = scale.μs;
+				}
+				
+				for (i = 2; i < 5; i++) {
 					is.nextLine();
 				}
 				while (is.hasNext()) {
@@ -203,12 +223,16 @@ public class TOFData {
 				dwell_time = time_pointer[1] - time_pointer[0]; // Determine
 																// experimental
 																// dwell time
+				if(dwell_time != initialDwell){
+					System.out.println("Disagreement in dwell time");
+				}
 				dwell = dwell_time;
-				dwell_scale = scale.ns;
 			}
 			num_tot_channels = i+1;
 			channel_counts = tof_pointer;
 			tof_flight_time = time_pointer;
+			
+			is.close();
 		}catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -272,6 +296,8 @@ public class TOFData {
 		{
 			starting_time_in_microseconds = 0.0f;
 		}
+		
+		System.out.println("Dwell: " + dwell_in_microseconds);
 
 		scaling_factor = (int) offset_scale.value() + 6; // To convert to microseconds
 		offset_in_microseconds = (float) (offset * Math.pow(10, scaling_factor));
@@ -514,7 +540,6 @@ public class TOFData {
 		float[][] this_poe_indiv_tofs;
 		float[] this_chan_indiv_tofs;
 		Color this_poe_color;
-		POECalcData[] detached_calc_data;
 		String[] poe_title_array;
 		String os = "";
 		
@@ -605,26 +630,26 @@ public class TOFData {
 				// to the calculation.)
 				os +=  "\n" + tof.calculation_title + "\n";
 				os +=  tof.detach_num_poes + " ";
-				detached_calc_data = tof.calc_data_for_poes;
+				ArrayList<POECalcData> detached_calc_data = tof.calc_data_for_poes;
 				poe_title_array = tof.detach_poe_titles;
 				for(i = 0; i < tof.detach_num_poes; i++)
 				{
 					// Output POE title first
 					os +=  "\n" + poe_title_array[i] + "\n";
 					// Output POE calc data member
-					os +=  detached_calc_data[i].is_included + " ";
-					if(detached_calc_data[i].is_included)
+					os +=  detached_calc_data.get(i).is_included + " ";
+					if(detached_calc_data.get(i).is_included)
 					{
 						this_poe_color = tof.tof_colors[i];
 
-						os +=  "\n" + detached_calc_data[i].beta_param + " ";
-						os +=  detached_calc_data[i].num_channels + " ";
-						for(j = 0; j < detached_calc_data[i].num_channels; j++)
+						os +=  "\n" + detached_calc_data.get(i).beta_param + " ";
+						os +=  detached_calc_data.get(i).num_channels + " ";
+						for(j = 0; j < detached_calc_data.get(i).num_channels; j++)
 						{
-							os +=  "\n" + detached_calc_data[i].mass_1[j] + " ";
-							os +=  detached_calc_data[i].mass_2[j] + " ";
-							os +=  detached_calc_data[i].rel_weight[j] + " ";
-							os +=  detached_calc_data[i].mass_ratio[j] + " ";
+							os +=  "\n" + detached_calc_data.get(i).mass_1[j] + " ";
+							os +=  detached_calc_data.get(i).mass_2[j] + " ";
+							os +=  detached_calc_data.get(i).rel_weight[j] + " ";
+							os +=  detached_calc_data.get(i).mass_ratio[j] + " ";
 						}
 
 						os +=  "\n" + (int) this_poe_color.getRed() + " ";
@@ -647,7 +672,6 @@ public class TOFData {
 		float[][] this_poe_indiv_tofs;
 		float[] this_chan_indiv_tofs;
 		String[] poe_titles;
-		POECalcData[] calc_data_array;
 		Color[] temp_color_array;
 		TOFData tof = new TOFData(sb);
 
@@ -799,7 +823,7 @@ public class TOFData {
 				tof.detach_num_poes = is.nextInt();
 				poe_titles = new String[tof.detach_num_poes];
 
-				calc_data_array = new POECalcData[tof.detach_num_poes];
+				ArrayList<POECalcData> calc_data_array = new ArrayList<POECalcData>();
 				temp_color_array = new Color[tof.detach_num_poes];
 
 				for (i = 0; i < tof.detach_num_poes; i++) {
@@ -808,23 +832,23 @@ public class TOFData {
 					title_temp = is.nextLine();
 
 					poe_titles[i] = title_temp;
-					calc_data_array[i] = new POECalcData();
-					calc_data_array[i].is_included = (is.hasNextBoolean()) ? is.nextBoolean(): ((is.nextInt() == 1) ? true:false);
-					if (calc_data_array[i].is_included) {
-						calc_data_array[i].beta_param = is.nextFloat();
-						calc_data_array[i].num_channels = is.nextInt();
-						number_of_channels = calc_data_array[i].num_channels;
-						calc_data_array[i].mass_1 = new float[number_of_channels];
-						calc_data_array[i].mass_2 = new float[number_of_channels];
-						calc_data_array[i].rel_weight = new float[number_of_channels];
-						calc_data_array[i].mass_ratio = new float[number_of_channels];
+					POECalcData poeData = new POECalcData();
+					poeData.is_included = (is.hasNextBoolean()) ? is.nextBoolean(): ((is.nextInt() == 1) ? true:false);
+					if (poeData.is_included) {
+						poeData.beta_param = is.nextFloat();
+						poeData.num_channels = is.nextInt();
+						number_of_channels = poeData.num_channels;
+						poeData.mass_1 = new float[number_of_channels];
+						poeData.mass_2 = new float[number_of_channels];
+						poeData.rel_weight = new float[number_of_channels];
+						poeData.mass_ratio = new float[number_of_channels];
 
 						for (j = 0; j < number_of_channels; j++) {
 							is.nextLine();
-							calc_data_array[i].mass_1[j] = is.nextFloat();
-							calc_data_array[i].mass_2[j] = is.nextFloat();
-							calc_data_array[i].rel_weight[j] = is.nextFloat();
-							calc_data_array[i].mass_ratio[j] = is.nextFloat();
+							poeData.mass_1[j] = is.nextFloat();
+							poeData.mass_2[j] = is.nextFloat();
+							poeData.rel_weight[j] = is.nextFloat();
+							poeData.mass_ratio[j] = is.nextFloat();
 						}
 						is.nextLine();
 						red = is.nextInt();
@@ -834,12 +858,14 @@ public class TOFData {
 						
 						//is.nextLine();
 					} else {
-						calc_data_array[i].mass_1 = null;
-						calc_data_array[i].mass_2 = null;
-						calc_data_array[i].rel_weight = null;
-						calc_data_array[i].mass_ratio = null;
+						poeData.mass_1 = null;
+						poeData.mass_2 = null;
+						poeData.rel_weight = null;
+						poeData.mass_ratio = null;
 						temp_color_array[i] = null;
 					}
+					
+					calc_data_array.add(poeData);
 				}
 				tof.calc_data_for_poes = calc_data_array;
 				tof.tof_colors = temp_color_array;

@@ -1,10 +1,12 @@
 package sbeam2.gui;
 
+import java.awt.Color;
 import java.awt.Dimension;
 
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 
+import javax.swing.JColorChooser;
 import javax.swing.JInternalFrame;
 import javax.swing.event.InternalFrameEvent;
 import javax.swing.event.InternalFrameListener;
@@ -28,7 +30,7 @@ import sbeam2.TOFData;
 
 public class TOFView extends JInternalFrame implements MouseInputListener, InternalFrameListener{
 	
-	protected ArrayList<TOFData> associatedTOFs;
+	public ArrayList<TOFData> associatedTOFs;
 	protected MainFrame mainWindow;
 	protected SBApp sb;
 	
@@ -193,8 +195,8 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 		
 		param_dialog.SetDefault1("0.0");
 		param_dialog.SetDefault2("1.0");
-		param_dialog.SetValue1("" + (-Float.MIN_VALUE));
-		param_dialog.SetValue2("" + Float.MAX_VALUE);
+		param_dialog.SetValue1("" + (TOFPlot.getDomainAxis().getRange().getLowerBound()));
+		param_dialog.SetValue2("" + (TOFPlot.getDomainAxis().getRange().getUpperBound()));
 		
 		param_dialog.Execute();
 		if(!param_dialog.ID){
@@ -206,6 +208,21 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 		NumberAxis domain = (NumberAxis) TOFPlot.getDomainAxis();
         domain.setRange(starting_time, ending_time);
 		
+	}
+	
+	protected void SetColors(){
+		String[] tofList = getDispTOFList();
+		List_Dialog tof_list_dialog = new List_Dialog(mainWindow, tofList, 1);
+		tof_list_dialog.SetCaption("Choose a TOF:");
+		tof_list_dialog.Execute();
+		if(!tof_list_dialog.ID) return; //check if ok clicked
+		int chosen_index = tof_list_dialog.GetChosenIndex()[0];
+		
+		Color c = JColorChooser.showDialog(this, "Choose Color", Color.black);
+		if(c != null){
+			associatedTOFs.get(chosen_index).time_of_flight_color = c;
+			TOFPlot.getRendererForDataset(TOFDataset).setSeriesPaint(chosen_index, c);
+		}
 	}
 	
 	
@@ -266,18 +283,17 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 	@Override
 	public void internalFrameClosing(InternalFrameEvent e) {
 		// TODO Auto-generated method stub
+	}
+
+	@Override
+	public void internalFrameClosed(InternalFrameEvent e) {
+		// TODO Auto-generated method stub
 		for (int i = 0; i < associatedTOFs.size(); i++) {
 			associatedTOFs.get(i).AssociatedTOFViews.remove(this);
 			// Each TOF can only be in view once!
 			associatedTOFs.get(i).is_Visible = -2;// CHANGE:set not visible
 		}
 		mainWindow.internalClosed(this);
-	}
-
-	@Override
-	public void internalFrameClosed(InternalFrameEvent e) {
-		// TODO Auto-generated method stub
-		
 	}
 
 	@Override

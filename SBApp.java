@@ -11,6 +11,9 @@ import java.util.Scanner;
 
 import javax.swing.JFileChooser;
 import javax.swing.JInternalFrame;
+import javax.swing.JOptionPane;
+import javax.swing.UIManager;
+import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 import sbeam2.gui.POEView;
@@ -23,6 +26,7 @@ import sbeam2.gui.MainFrame;
 import sbeam2.gui.TOFView;
 import sbeam2.gui.TOF_Edit_Dialog_2;
 import sbeam2.gui.TOF_Input_1_Dialog;
+import sbeam2.gui.TOF_Subtract_Dialog;
 
 
 public class SBApp {
@@ -55,6 +59,13 @@ public class SBApp {
 	
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
+		try {
+			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+		} catch (ClassNotFoundException | InstantiationException | IllegalAccessException
+				| UnsupportedLookAndFeelException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		SBApp app = new SBApp();
 	}
 	
@@ -321,6 +332,7 @@ public class SBApp {
 	
 	
 	
+	
 	/* BEGIN TOF METHODS*/
 	public void DisplayNewTOF(){
 		//let user choose a TOF
@@ -353,15 +365,15 @@ public class SBApp {
 		if(tof_input_1.ID == false){
 			return;
 		}
-		time_of_flight.loadFromInputDialog(tof_input_1);
-		
-		
 		//Setup Instrument Parameters if not done already
 		if (!InstParamsSet) {
 			setupInstParam();
 		}
 		
-		time_of_flight.SetRealFlightTime();
+		
+		time_of_flight.loadFromInputDialog(tof_input_1);
+		
+		//time_of_flight.SetRealFlightTime();
 		
 		//Create a View for TOF
 		TOFView t = new TOFView(this, mf);
@@ -412,6 +424,121 @@ public class SBApp {
 			tofViews.add(t);
 			t.execute();
 		    time_of_flight.is_Visible = -1;  //CHANGE: change var when visible
+		}
+	}
+	
+	public void PerformTOFSubtraction(){
+		//choose tofs for subtraction
+		String[] tofList = getAllTOFList();
+		List_Dialog tof_list_dialog = new List_Dialog(mf, tofList, 2);
+		tof_list_dialog.SetCaption("Choose two real TOFs for subtraction:");
+		tof_list_dialog.Execute();
+		if(!tof_list_dialog.ID) return;
+		
+		//get the tofs from dialog
+		TOFData tof_1 = tofs.get(tof_list_dialog.GetChosenIndex()[0]);
+		TOFData tof_2 = tofs.get(tof_list_dialog.GetChosenIndex()[1]);
+		
+		//check to make sure tofs are subtractable
+		if(CompareTOFs(tof_1, tof_2) == false)
+		{
+			JOptionPane.showMessageDialog(mf, "TOFs must have same dwell time, offset, ion m/e, and number of points. Cannot perform subtraction with these TOFs!");
+			return;
+		}
+		
+		// show subtraction dialog
+		TOF_Subtract_Dialog tof_subtract = new TOF_Subtract_Dialog(mf, tof_1.title, tof_2.title);
+		tof_subtract.Execute();
+		if(tof_subtract.ID != true) return;
+		
+		//switch tofs if necessary
+		TOFData temp_tof;
+		if(!tof_subtract.title1.getText().equals(tof_1.title))
+		{
+			temp_tof = tof_2;
+			tof_2 = tof_1;
+			tof_1 = temp_tof;
+		}
+		
+		//calculate new tof
+		TOFData new_tof = TOFMath(tof_1, tof_2, false);
+		
+		//setup the new tof
+		TOF_Input_1_Dialog tof_input_1 = new TOF_Input_1_Dialog(mf, new_tof);
+		new_tof.loadFromInputDialog(tof_input_1);
+		tofs.add(new_tof);
+		
+		TOFView t = new TOFView(this, mf);
+		t.addTOFToView(new_tof);
+		tofViews.add(t);
+		t.execute();
+	    new_tof.is_Visible = -1;  //CHANGE: change var when visible
+	}
+
+	public void PerformTOFAddition() {
+		//choose tofs for subtraction
+		String[] tofList = getAllTOFList();
+		List_Dialog tof_list_dialog = new List_Dialog(mf, tofList, 2);
+		tof_list_dialog.SetCaption("Choose two real TOFs for addition:");
+		tof_list_dialog.Execute();
+		if(!tof_list_dialog.ID) return;
+		
+		//get the tofs from dialog
+		TOFData tof_1 = tofs.get(tof_list_dialog.GetChosenIndex()[0]);
+		TOFData tof_2 = tofs.get(tof_list_dialog.GetChosenIndex()[1]);
+		
+		//check to make sure tofs are subtractable
+		if(CompareTOFs(tof_1, tof_2) == false)
+		{
+			JOptionPane.showMessageDialog(mf, "TOFs must have same dwell time, offset, ion m/e, and number of points. Cannot perform addition with these TOFs!");
+			return;
+		}
+		
+		//calculate new tof
+		TOFData new_tof = TOFMath(tof_1, tof_2, true);
+		
+		//setup the new tof
+		TOF_Input_1_Dialog tof_input_1 = new TOF_Input_1_Dialog(mf, new_tof);
+		new_tof.loadFromInputDialog(tof_input_1);
+		tofs.add(new_tof);
+		
+		TOFView t = new TOFView(this, mf);
+		t.addTOFToView(new_tof);
+		tofViews.add(t);
+		t.execute();
+	    new_tof.is_Visible = -1;  //CHANGE: change var when visible
+	}
+	
+	public void DeleteLoadedTOFs(){
+		String[] tofList = getAllTOFList();
+		List_Dialog tof_list_dialog = new List_Dialog(mf, tofList, 0);
+		tof_list_dialog.SetCaption("Delete TOFs which are not in use:");
+		tof_list_dialog.Execute();
+		if(!tof_list_dialog.ID) return;
+		
+		int num_chosen = tof_list_dialog.GetChosenIndex().length;
+		String message;
+		if(num_chosen == 1)
+		{
+			message = "Are you sure you want to delete this TOF?";
+		}
+		else
+		{
+			message = "Are you sure you want to delete these " + num_chosen + " TOFs?";
+		}
+		
+		
+		if(JOptionPane.showConfirmDialog(mf, message) == JOptionPane.OK_OPTION){
+			int[] chosen_array = tof_list_dialog.GetChosenIndex();
+			for(int i = num_chosen-1; i >= 0; i--){
+				int index = chosen_array[i];
+				TOFData tof = tofs.get(index);
+				for(int j = 0; j < tof.AssociatedTOFViews.size(); j++){
+					TOFView view = tof.AssociatedTOFViews.get(j);
+					view.removeTOFFromView(view.associatedTOFs.indexOf(tof));
+				}
+				tofs.remove(tof);
+			}
 		}
 	}
 	
@@ -564,6 +691,22 @@ public class SBApp {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+	
+	public void DeleteStoredPE(){
+		String[] poeList = getAllPOEList();
+		List_Dialog poe_list_dialog = new List_Dialog(mf, poeList, 1);
+		poe_list_dialog.SetCaption("Choose a POE to open:");
+		poe_list_dialog.Execute();
+		if(!poe_list_dialog.ID) return;
+		
+		POEData poe = poes.get(poe_list_dialog.GetChosenIndex()[0]);
+		for(int i = 0; i < poe.AssociatedPOEViews.size(); i++){
+			POEView view = poe.AssociatedPOEViews.get(i);
+			view.removePOEFromView(view.associatedPOEs.indexOf(poe));
+		}
+		
+		poes.remove(poe);
 	}
 
 	
@@ -767,6 +910,22 @@ public class SBApp {
 		return list;
 	}
 	
+	protected String[] getRealTOFList(){
+		int numReal = 0;
+		for(int i=0; i < tofs.size(); i++){
+			if(tofs.get(i).is_real_TOF) numReal++;
+		}
+		
+		String[] list = new String[numReal];
+		int ind = 0;
+		for(int i=0; i < tofs.size(); i++){
+			if(tofs.get(i).is_real_TOF){
+				list[ind++] = tofs.get(i).title;
+			}
+		}
+		return list;
+	}
+	
 	protected String[] getAllPOEList(){
 		String[] list = new String[poes.size()];
 		for(int i=0; i < poes.size(); i++){
@@ -781,5 +940,105 @@ public class SBApp {
 			list[i] = calcs.get(i).title;
 		}
 		return list;
+	}
+	
+	protected boolean CompareTOFs(TOFData tof_1, TOFData tof_2){
+		String temp_value_1;
+		String temp_value_2;
+		int tof1_num_points, tof2_num_points, dwell_1, dwell_2, offset_1, offset_2;
+		float ion_m_e_1, ion_m_e_2;
+		boolean same = true;
+
+		tof1_num_points = tof_1.num_tot_channels;
+		tof2_num_points = tof_2.num_tot_channels;
+		dwell_1 = (int) tof_1.dwell;
+		dwell_2 = (int) tof_2.dwell;
+		offset_1 = (int) tof_1.offset;
+		offset_2 = (int) tof_2.offset;
+		ion_m_e_1 = tof_1.ion_m_e;
+		ion_m_e_2 = tof_2.ion_m_e;
+
+		// Need to compare TOFs to be sure they can be added
+		if((tof_1.dwell_scale) != (tof_2.dwell_scale))
+		{
+			same = false;
+		}
+		if((tof_1.offset_scale) != (tof_2.offset_scale))
+		{
+			same = false;
+		}
+		if(tof1_num_points != tof2_num_points)
+		{
+			same = false;
+		}
+
+		temp_value_1 = "" + dwell_1;
+		temp_value_2 = "" + dwell_2;
+		if(!temp_value_1.equals(temp_value_2))
+		{
+			same = false;
+		}
+
+		temp_value_1 = "" + offset_1;
+		temp_value_2 = "" + offset_2;
+		if(!temp_value_1.equals( temp_value_2) )
+		{
+			same = false;
+		}
+
+		temp_value_1 = "" +  ion_m_e_1;
+		temp_value_2 = "" + ion_m_e_2;
+		if(!temp_value_1.equals(temp_value_2))
+		{
+			same = false;
+		}
+		return same;
+	}
+	
+	protected TOFData TOFMath(TOFData tof_1, TOFData tof_2, boolean should_add){
+		TOFData new_tof = new TOFData(this);
+		int tof1_num_points, i;
+		float[] new_tof_time_array, new_tof_amp_array, time_array;
+		float[] tof1_amp_array, tof2_amp_array;
+
+		tof1_num_points = tof_1.num_tot_channels;
+		new_tof_time_array = new float[tof1_num_points];
+		new_tof_amp_array = new float[tof1_num_points];
+		time_array = tof_1.tof_flight_time;
+		tof1_amp_array = tof_1.channel_counts;
+		tof2_amp_array = tof_2.channel_counts;
+		if(should_add == true)
+		{
+			for(i = 0; i < tof1_num_points; i++)
+			{
+				new_tof_time_array[i] = time_array[i];
+				new_tof_amp_array[i] = tof1_amp_array[i] + tof2_amp_array[i];
+			}
+			new_tof.title = "TOF sum";
+		}
+		else
+		{
+			for(i = 0; i < tof1_num_points; i++)
+			{
+				new_tof_time_array[i] = time_array[i];
+				new_tof_amp_array[i] = tof1_amp_array[i] - tof2_amp_array[i];
+			}
+			new_tof.title = "TOF difference";
+		}
+		new_tof.dwell = tof_1.dwell;
+		new_tof.offset = tof_1.offset;
+		new_tof.num_tot_channels = tof1_num_points;
+		new_tof.channel_counts = new_tof_amp_array;
+		new_tof.tof_flight_time = new_tof_time_array;
+
+		new_tof.lab_angle = tof_1.lab_angle;
+		new_tof.dwell_scale = tof_1.dwell_scale;  
+		new_tof.offset_scale = tof_1.offset_scale;
+		new_tof.ion_m_e = tof_1.ion_m_e;
+		new_tof.polarization_angle = tof_1.polarization_angle;
+		new_tof.depolarization = tof_1.depolarization;
+		new_tof.polarized_laser = tof_1.polarized_laser;
+		new_tof.is_real_TOF = true;
+		return new_tof;
 	}
 }

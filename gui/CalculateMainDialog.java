@@ -129,6 +129,11 @@ public class CalculateMainDialog extends JDialog implements ActionListener {
 
 	public void SetDialogData(CalcData calc) {
 		calculation = calc;
+		num_contrib_poes = calculation.num_poes;
+		ionization_is_gaussian = calculation.is_ionizer_gaussian;
+		calculation_number = calculation.CalcNumber;
+		
+		
 		ion_m_e_edit.setText("" + calculation.ion_m_e);
 		bm_ang_segs_edit.setText("" + calculation.num_beam_ang_segs);
 		det_ang_segs_edit.setText("" + calculation.num_det_ang_segs);
@@ -139,13 +144,11 @@ public class CalculateMainDialog extends JDialog implements ActionListener {
 		lab_vel_min_edit.setText("" + calculation.min_lab_velocity);
 		lab_vel_max_edit.setText("" + calculation.max_lab_velocity);
 		lab_vel_segs_edit.setText("" + calculation.num_lab_vel_segs);
-
+		num_poes_static.setText("Number of contributing P(E)'s: "+ num_contrib_poes);
 		title_edit.setText(calculation.title);
+		num_tofs_static.setText("" + calculation.num_tofs);
 
-		num_contrib_poes = calculation.num_poes;
 
-		ionization_is_gaussian = calculation.is_ionizer_gaussian;
-		calculation_number = calculation.CalcNumber;
 	}
 
 	public void DetachOldTOFs(boolean should_detach) {
@@ -191,11 +194,8 @@ public class CalculateMainDialog extends JDialog implements ActionListener {
 				"Detector Angle at Interaction Region: "));
 
 		JPanel pan4 = new JPanel(new BorderLayout());
-		pan4.setBorder(BorderFactory
-				.createTitledBorder("Distribution of Ionization Source Probablilities: "));
-		pan4.add(
-				getLabelledPanel(gaussian_dist_checkbox,
-						"Gaussian Ionization Distribution"), BorderLayout.NORTH);
+		pan4.setBorder(BorderFactory.createTitledBorder("Distribution of Ionization Source Probablilities: "));
+		pan4.add(getLabelledPanel(gaussian_dist_checkbox,"Gaussian Ionization Distribution"), BorderLayout.NORTH);
 		pan4.add(
 				getLabelledPanel(ionizer_segs_edit,
 						"Number of Ionizer Segments: "), BorderLayout.CENTER);
@@ -352,8 +352,7 @@ public class CalculateMainDialog extends JDialog implements ActionListener {
 		// check
 		num_contrib_poes = calculation.num_poes;
 
-		num_poes_static.setText("Number of contributing P(E)'s:  "
-				+ num_contrib_poes);
+		num_poes_static.setText("Number of contributing P(E)'s:  "+ num_contrib_poes);
 
 	}
 

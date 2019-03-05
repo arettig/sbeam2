@@ -16,4 +16,5 @@ public class POECalcData {
 	public float[] rel_weight;
 
 	public float[] mass_ratio;
+	public POEData poe;
 }

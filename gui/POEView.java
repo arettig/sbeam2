@@ -10,6 +10,7 @@ import java.awt.event.MouseEvent;
 import java.awt.geom.Ellipse2D;
 import java.util.ArrayList;
 
+import javax.swing.JColorChooser;
 import javax.swing.JInternalFrame;
 import javax.swing.event.InternalFrameEvent;
 import javax.swing.event.InternalFrameListener;
@@ -20,6 +21,7 @@ import org.jfree.chart.ChartMouseEvent;
 import org.jfree.chart.ChartMouseListener;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.entity.XYItemEntity;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
@@ -40,7 +42,7 @@ import sbeam2.TOFData;
 public class POEView extends JInternalFrame implements InternalFrameListener, ChartMouseListener{
 	protected SBApp sb;
 	protected MainFrame parent;
-   	protected ArrayList<POEData> associatedPOEs;
+   	public ArrayList<POEData> associatedPOEs;
    	
 	protected XYSeriesCollection POEDataset;
 	protected XYPlot POEPlot;
@@ -57,6 +59,7 @@ public class POEView extends JInternalFrame implements InternalFrameListener, Ch
  		associatedPOEs = new ArrayList<POEData>();
  		
  		this.addInternalFrameListener(this);
+ 		this.addFocusListener(parent);
  		
  		POEDataset = new XYSeriesCollection( );
 		xyScatter = ChartFactory.createScatterPlot(null, "Energy", "Units", POEDataset, PlotOrientation.VERTICAL, false, false, false);
@@ -117,7 +120,97 @@ public class POEView extends JInternalFrame implements InternalFrameListener, Ch
 		poe.AssociatedPOEViews.add(this);
 		this.title += (this.title.isEmpty() ? "" : " && ") + poe.title;
 	}
+	
+	public void removePOEFromView(int index){
+		POEDataset.removeSeries(index);
+		associatedPOEs.get(index).AssociatedPOEViews.remove(this);
+		associatedPOEs.remove(index);
+	}
  	
+	protected String[] getAllPOEList(){
+		String[] list = new String[sb.poes.size()];
+		for(int i=0; i < sb.poes.size(); i++){
+			list[i] = sb.poes.get(i).title;
+		}
+		return list;
+	}
+	
+	protected String[] getDispPOEList(){
+		String[] list = new String[associatedPOEs.size()];
+		for(int i=0; i < associatedPOEs.size(); i++){
+			list[i] = associatedPOEs.get(i).title;
+		}
+		return list;
+	}
+	
+	
+	
+	
+	/* MENU ITEMS */
+	protected void AppendStoredPE()
+	{
+		String[] poeList = getAllPOEList();
+		List_Dialog poe_list_dialog = new List_Dialog(parent, poeList, 1);
+		poe_list_dialog.SetCaption("Choose a P(E) to append:");
+		poe_list_dialog.Execute();
+		if (!poe_list_dialog.ID) return;
+		
+		POEData poe = sb.poes.get(poe_list_dialog.GetChosenIndex()[0]);
+		System.out.println("Adding " + poe.title);
+		addPOEToView(poe);
+		
+
+	}
+	
+	protected void RemovePEFromDisplay() {
+		String[] poeList = getDispPOEList();
+		List_Dialog poe_list_dialog = new List_Dialog(parent, poeList, 1);
+		poe_list_dialog.SetCaption("Choose a P(E) to remove:");
+
+		poe_list_dialog = new List_Dialog(parent, poeList, 1);
+		poe_list_dialog.Execute();
+		if(!poe_list_dialog.ID) return; //check if ok clicked
+		int chosen_index = poe_list_dialog.GetChosenIndex()[0];
+		
+		removePOEFromView(chosen_index);
+	}
+	
+	protected void AxisRange(){
+		Param_Dialog param_dialog = new Param_Dialog(parent, 2);
+		
+		param_dialog.SetDefault1("0.0");
+		param_dialog.SetDefault2("1.0");
+		param_dialog.SetValue1("" + (-Float.MIN_VALUE));
+		param_dialog.SetValue2("" + Float.MAX_VALUE);
+		
+		param_dialog.Execute();
+		if(!param_dialog.ID){
+			return;
+		}
+		float starting_energy = Float.parseFloat(param_dialog.edit1.getText());
+		float ending_energy = Float.parseFloat(param_dialog.edit2.getText());
+		
+		NumberAxis domain = (NumberAxis) POEPlot.getDomainAxis();
+        domain.setRange(starting_energy, ending_energy);
+		
+	}
+	
+	protected void SetColors(){
+		String[] tofList = getDispPOEList();
+		List_Dialog tof_list_dialog = new List_Dialog(parent, tofList, 1);
+		tof_list_dialog.SetCaption("Choose a TOF:");
+		tof_list_dialog.Execute();
+		if(!tof_list_dialog.ID) return; //check if ok clicked
+		int chosen_index = tof_list_dialog.GetChosenIndex()[0];
+		
+		Color c = JColorChooser.showDialog(this, "Choose Color", Color.black);
+		if(c != null){
+			associatedPOEs.get(chosen_index).poe_color = c;
+			POEPlot.getRendererForDataset(POEDataset).setSeriesPaint(chosen_index, c);
+		}
+	}
+	
+	
 	
 	
 	
@@ -147,7 +240,12 @@ public class POEView extends JInternalFrame implements InternalFrameListener, Ch
 	@Override
 	public void internalFrameClosed(InternalFrameEvent e) {
 		// TODO Auto-generated method stub
-		
+		for (int i = 0; i < associatedPOEs.size(); i++) {
+			associatedPOEs.get(i).AssociatedPOEViews.remove(this);
+			// Each TOF can only be in view once!
+			associatedPOEs.get(i).is_Visible = -2;// CHANGE:set not visible
+		}
+		parent.internalClosed(this);
 	}
 
 	@Override

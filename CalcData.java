@@ -1,6 +1,7 @@
 package sbeam2;
 
 import java.awt.Color;
+import java.util.ArrayList;
 
 import javax.swing.JFrame;
 
@@ -49,7 +50,7 @@ public class CalcData {
 
 	public float[][][][][] TOF_2cos_gamma;  // YIKES!!!
 
-	public POECalcData[] data_for_poes, temp_data_for_poes;
+	public ArrayList<POECalcData> data_for_poes;
 
 	public float[][][][] min_u_squared_array, max_u_squared_array;
 
@@ -118,23 +119,25 @@ public class CalcData {
 		SetLabVelocityArrays(0, 5000, 400);
 		//SetNumBeamAngleSegs(DEFAULT_ANG_SEGS);
 
-		data_for_poes = new POECalcData[num_total_poes];
+		data_for_poes = new ArrayList<POECalcData>();
 
 		// Initialize all POE_calc_data structs
 		for(i = 0; i < num_total_poes; i++)
 		{
-			data_for_poes[i] = new POECalcData();
+			POECalcData poeData = new POECalcData();
 			// Give each one a single ion channel, but not contributing to calculation
-			data_for_poes[i].beta_param = 0.0f;
-			data_for_poes[i].num_channels = 1;
-			data_for_poes[i].is_included = false;
-			data_for_poes[i].mass_1 = new float[1];
-			data_for_poes[i].mass_1[0] = 1.0f;
-			data_for_poes[i].mass_2 = new float[1];
-			data_for_poes[i].mass_2[0] = 1.0f;
-			data_for_poes[i].rel_weight = new float[1];
-			data_for_poes[i].rel_weight[0] = 1.0f;
-			data_for_poes[i].mass_ratio = null;
+			poeData.beta_param = 0.0f;
+			poeData.num_channels = 1;
+			poeData.is_included = false;
+			poeData.mass_1 = new float[1];
+			poeData.mass_1[0] = 1.0f;
+			poeData.mass_2 = new float[1];
+			poeData.mass_2[0] = 1.0f;
+			poeData.rel_weight = new float[1];
+			poeData.rel_weight[0] = 1.0f;
+			poeData.mass_ratio = null;
+			poeData.poe = app.poes.get(i);
+			data_for_poes.add(poeData);
 		}
 		ReplacePOECalcData(false);
 		tof_lab_angles = null;
@@ -666,13 +669,10 @@ public class CalcData {
 	}
 	
 	public void ResetNumContribPOEs(){
-		int i;
-
 		num_poes = 0;
-
-		for(i = 0; i < num_total_poes; i++)
+		for(int i = 0; i < num_total_poes; i++)
 		{
-			if(temp_data_for_poes[i].is_included)
+			if(data_for_poes.get(i).is_included)
 			{
 				num_poes++;
 			}
@@ -680,49 +680,16 @@ public class CalcData {
 	}
 	
 	public void ReplacePOECalcData(boolean t_or_f){
-		if(t_or_f == true)
-		{
-			data_for_poes = temp_data_for_poes;
-		}
-		else
-		{
-			temp_data_for_poes = data_for_poes;
-		}
-
-
 		ResetNumContribPOEs();
 	}
 	
 	
-	public void SetPOECalcData(POECalcData []new_poe_calc){
+	public void SetPOECalcData(){
 		int i, j, number_channels;
 		float mass1, mass2, temp_mass_ratio;
 		float sum;
-		POECalcData this_poecalcdata;
 
 		num_poes = 0;
-
-		// Delete old data for P(E)'s
-		for(i = 0; i < num_total_poes; i++)
-		{
-			/*if(data_for_poes[i].mass_1)
-		      	delete data_for_poes[i].mass_1;
-		      if(data_for_poes[i].mass_2)
-		      	delete data_for_poes[i].mass_2;
-		      if(data_for_poes[i].rel_weight)
-		      	delete data_for_poes[i].rel_weight;
-		      if(data_for_poes[i].mass_ratio)
-		      	delete data_for_poes[i].mass_ratio;   */
-
-			// Can't delete all this since new_poe_calc has these pointers in it
-
-			if(new_poe_calc[i].is_included)
-				num_poes++;
-		}
-		//delete data_for_poes;
-
-		temp_data_for_poes = new_poe_calc;
-		//data_for_poes = new_poe_calc;
 
 		sum = 0.0f;
 		// Determine mass_ratios and scale all relative_weights
@@ -732,7 +699,7 @@ public class CalcData {
 		// will be in units of kcal/mol
 		for(i = 0; i < num_total_poes; i++)
 		{
-			this_poecalcdata = (temp_data_for_poes[i]);
+			POECalcData this_poecalcdata = data_for_poes.get(i);
 			if(this_poecalcdata.is_included)
 			{
 				number_channels = this_poecalcdata.num_channels;
@@ -745,6 +712,7 @@ public class CalcData {
 					this_poecalcdata.mass_ratio[j] = temp_mass_ratio;
 
 					sum += this_poecalcdata.rel_weight[j];
+					num_poes++;
 				}
 			}
 		}
@@ -754,7 +722,7 @@ public class CalcData {
 		{
 			for(i = 0; i < num_total_poes; i++)
 			{
-				this_poecalcdata = (temp_data_for_poes[i]);
+				POECalcData this_poecalcdata = data_for_poes.get(i);
 				if(this_poecalcdata.is_included)
 				{
 					for(j = 0; j < this_poecalcdata.num_channels; j++)
@@ -1128,7 +1096,7 @@ public class CalcData {
 				// Find num_included_poes!
 				for(poe_num = 0; poe_num < num_total_poes; poe_num++)
 				{
-					current_poe_data = data_for_poes[poe_num];
+					current_poe_data = data_for_poes.get(poe_num);
 					if(current_poe_data.is_included == true)
 					{
 						num_included_poes++;
@@ -1145,7 +1113,7 @@ public class CalcData {
 				count = 0;
 				for(poe_num = 0; poe_num < num_total_poes; poe_num++)
 				{
-					current_poe_data = data_for_poes[poe_num];
+					current_poe_data = data_for_poes.get(poe_num);
 					if(current_poe_data.is_included == true)
 					{
 						sb.poes.get(poe_num).AssociatedCalcs.add(this);
@@ -1585,7 +1553,7 @@ public class CalcData {
 		float velocity_point, lower_vel_prob, this_tof_time, this_ionizer_count, this_distance;
 		float this_time_count, this_time_inverse, real_lab_vel;
 
-		POECalcData current_poe_data = data_for_poes[poe_number];
+		POECalcData current_poe_data = data_for_poes.get(poe_number);
 
 		float u_min_squared_poe, u_max_squared_poe;
 

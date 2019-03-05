@@ -92,7 +92,7 @@ public class MainFrame extends JFrame implements ActionListener, FocusListener{
 	}
 
 	public void initStuff() {
-		this.setSize(java.awt.Toolkit.getDefaultToolkit().getScreenSize());
+		//this.setSize(java.awt.Toolkit.getDefaultToolkit().getScreenSize());
 		this.setExtendedState(JFrame.MAXIMIZED_BOTH);
 		this.setDefaultCloseOperation(EXIT_ON_CLOSE);
 
@@ -358,7 +358,7 @@ public class MainFrame extends JFrame implements ActionListener, FocusListener{
 			tempMenu.add(item);
 			
 		}
-		this.pack();
+		//this.pack();
 	}
 
 	public void internalClosed(JInternalFrame f){

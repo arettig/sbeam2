@@ -29,7 +29,7 @@ public class List_Dialog extends JDialog implements ActionListener {
 	protected String[] text_of_list;
 	protected int chosen_index;
 
-	protected JList<String> list_box;
+	public JList<String> list_box;
 	protected JButton ok, cancel;
 
 	protected String dialog_caption;

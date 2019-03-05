@@ -12,6 +12,7 @@ import java.awt.Dialog.ModalityType;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.text.NumberFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import javafx.scene.layout.Border;
@@ -64,13 +65,13 @@ public class ContribPOEsDialog extends JDialog implements ActionListener,
 	protected String calc_title;
 	protected String poe_title;
 	protected String[] ion_channel_list;
+	
+	protected ArrayList<POECalcData> includedPOEs, notIncludedPOEs;
 
 	protected int num_ion_channels, old_num_channels;
 
-	protected POECalcData[] poe_info;
-
-	protected int num_total_poes, num_contrib_poes, old_sel_poe_num,
-			old_sel_ion_index;
+	protected int old_sel_ion_index;
+	protected POECalcData old_sel_poe;
 
 	public boolean ID;
 	
@@ -80,20 +81,29 @@ public class ContribPOEsDialog extends JDialog implements ActionListener,
 		super(p);
 		parent = p;
 
-		int i, j, ion_channels;
+		int j, ion_channels;
 		POECalcData[] calc_poe_calc_data;
 
 		IsOpen = false;
 
 		application = app;
 		calculation = calc;
-		calc_poe_calc_data = calculation.temp_data_for_poes;
+		
+		includedPOEs = new ArrayList<POECalcData>();
+		notIncludedPOEs = new ArrayList<POECalcData>();
+		for(int i = 0; i < calculation.data_for_poes.size(); i++){
+			POECalcData d = calculation.data_for_poes.get(i);
+			if(d.is_included){
+				includedPOEs.add(d);
+			}else{
+				notIncludedPOEs.add(d);
+			}
+		}
 
 		calc_title = "";
 		poe_title = "";
 
 		calc_num = calculation.CalcNumber;
-		num_total_poes = calculation.num_total_poes;
 
 		NumberFormat format = NumberFormat.getNumberInstance();
 		format.setGroupingUsed(false);
@@ -103,7 +113,7 @@ public class ContribPOEsDialog extends JDialog implements ActionListener,
 		// focus lost
 		formatter.setCommitsOnValidEdit(true);
 		beta_edit = new JFormattedTextField(formatter);
-		beta_edit.setText("0");
+		beta_edit.setText("0.0");
 		mass1_edit = new JFormattedTextField(formatter);
 		mass1_edit.setText("0");
 		mass2_edit = new JFormattedTextField(formatter);
@@ -142,35 +152,6 @@ public class ContribPOEsDialog extends JDialog implements ActionListener,
 		old_sel_ion_index = 0;
 		ion_channel_list = null;
 
-		// Initialize poe_info and copy information from calculation
-		// poe_calc_data
-		poe_info = new POECalcData[num_total_poes];
-		for (i = 0; i < num_total_poes; i++) {
-			poe_info[i] = new POECalcData();
-			poe_info[i].beta_param = calc_poe_calc_data[i].beta_param;
-			ion_channels = calc_poe_calc_data[i].num_channels;
-			poe_info[i].num_channels = ion_channels;
-			poe_info[i].is_included = calc_poe_calc_data[i].is_included;
-
-			poe_info[i].mass_ratio = null;
-			if (ion_channels == 0) {
-				poe_info[i].mass_1 = null;
-				poe_info[i].mass_2 = null;
-				poe_info[i].rel_weight = null;
-				// poe_info[i].mass_ratio = null;
-			} else {
-				poe_info[i].mass_1 = new float[ion_channels];
-				poe_info[i].mass_2 = new float[ion_channels];
-				poe_info[i].rel_weight = new float[ion_channels];
-				for (j = 0; j < ion_channels; j++) {
-					poe_info[i].mass_1[j] = calc_poe_calc_data[i].mass_1[j];
-					poe_info[i].mass_2[j] = calc_poe_calc_data[i].mass_2[j];
-					poe_info[i].rel_weight[j] = calc_poe_calc_data[i].rel_weight[j];
-					// poe_info[i].mass_ratio[j] =
-					// calc_poe_calc_data[i].mass_ratio[j];
-				} // End of loop over ion_channels
-			} // End of else statement
-		} // End of loop over info for all possible P(E)'s
 
 		String m_e_static_text;
 
@@ -188,11 +169,10 @@ public class ContribPOEsDialog extends JDialog implements ActionListener,
 		m_e_static_text = " amu";
 		ion_m_e_static.setText(m_e_static_text);
 
-		num_total_poes = application.poes.size();
 
-		old_sel_poe_num = -1; // No P(E) number is previously selected
-		FillContribListBoxes(-1);
-		if (num_contrib_poes > 0) {
+		old_sel_poe = null; // No P(E) number is previously selected
+		FillContribListBoxes();
+		if (calculation.num_total_poes > 0) {
 			contrib_poe_listbox.setSelectedIndex(0);
 		}
 	}
@@ -224,10 +204,10 @@ public class ContribPOEsDialog extends JDialog implements ActionListener,
 		mid.setBorder(BorderFactory
 				.createTitledBorder("Click on a contributing P(E) to change the following information:"));
 		mid.setLayout(new BorderLayout());
-		mid.add(getLabelledPanel(numChan, "Number of Ionization Channels"),
+		mid.add(getLabelledPanel(numChan, "Ionization Channels"),
 				BorderLayout.WEST);
 		mid.add(getLabelledPanel(beta_edit,
-				"Anisotropy Parameter (β)\nbetween -1 and 2"),
+				"Anisotropy (β: -1 - 2)"),
 				BorderLayout.EAST);
 
 		JPanel botMid = new JPanel();
@@ -278,8 +258,7 @@ public class ContribPOEsDialog extends JDialog implements ActionListener,
 				|| non_contrib_poe_listbox.isSelectionEmpty()) {
 			return;
 		}
-		int i, selected_index, chosen_poe = -1;
-		int count = 0;
+		int selected_index = -1;
 
 		// Find out which one is selected
 		selected_index = non_contrib_poe_listbox.getSelectedIndex();
@@ -289,50 +268,23 @@ public class ContribPOEsDialog extends JDialog implements ActionListener,
 		if (selected_index < 0)
 			return;
 
-		i = 0;
-		while (count <= selected_index) {
-			if (poe_info[i].is_included == false) {
-				if (count < selected_index) {
-					count++;
-				} else {
-					poe_info[i].is_included = true;
-					chosen_poe = i;
-					count++;
-				}
-			}
-			i++;
-		}
+		POECalcData d = notIncludedPOEs.remove(selected_index);
+		d.is_included = true;
+		includedPOEs.add(d);
 		contrib_poe_listbox.setSelectedIndex(0);
 		// FillContribListBoxes(chosen_poe);
 	}
 
-	/*
-	 * protected void CmRemovePOEFromList(); protected void EvMouseMove(int
-	 * modKeys, Point point); protected void EvLbnDblClkContrib(); protected
-	 * void EvLbnDblClkNonContrib(); protected void EvLbnSelChangeContrib();
-	 * protected void EvLbnSelChangeIonChan();
-	 */
-	protected int GetSelContribPOE() {
-		int i, selected_index, chosen_poe = 0;
+	protected POECalcData GetSelContribPOE() {
+		int selected_index = 0;
 		int count = 0;
 
 		selected_index = contrib_poe_listbox.getSelectedIndex();
-		if (selected_index < 0)
-			return selected_index;
-
-		i = 0;
-		while (count <= selected_index) {
-			if (poe_info[i].is_included == true) {
-				if (count < selected_index) {
-					count++;
-				} else {
-					chosen_poe = i;
-					count++;
-				}
-			}
-			i++;
+		if (selected_index < 0){
+			return null;
 		}
-		return chosen_poe;
+		
+		return includedPOEs.get(selected_index);
 	}
 
 	protected void removePOE() {
@@ -340,51 +292,38 @@ public class ContribPOEsDialog extends JDialog implements ActionListener,
 				|| contrib_poe_listbox.isSelectionEmpty()) {
 			return;
 		}
-		int i, selected_index, chosen_poe = 0, chosen_channel;
-		int count = 0;
+		int selected_index, chosen_channel;
 
 		// Find out which one is selected
 
 		selected_index = contrib_poe_listbox.getSelectedIndex();
 
-		if (selected_index < 0) // i.e. if none is selected
+		if (selected_index < 0){ 
 			return;
+		}
 
 		((DefaultListModel<String>) non_contrib_poe_listbox.getModel())
 				.addElement(((DefaultListModel<String>) contrib_poe_listbox
 						.getModel()).remove(selected_index));
-		i = 0;
-		while (count <= selected_index) {
-			if (poe_info[i].is_included == true) {
-				if (count < selected_index) {
-					count++;
-				} else {
-					poe_info[i].is_included = false;
-					chosen_poe = i;
-					count++;
-				}
-			}
-			i++;
-		}
+		
+		POECalcData d = includedPOEs.get(selected_index);
+		d.is_included = false;
+		notIncludedPOEs.add(d);
+		
 		// Set data in POE_calc_data for this selected P(E)
-		poe_info[chosen_poe].beta_param = parseFloat(beta_edit.getText());
+		d.beta_param = parseFloat(beta_edit.getText());
 
 		chosen_channel = ion_chan_listbox.getSelectedIndex();
-
 		if (chosen_channel >= 0) {
-			poe_info[chosen_poe].mass_1[chosen_channel] = parseFloat(mass1_edit.getText());
-			poe_info[chosen_poe].mass_2[chosen_channel] = parseFloat(mass2_edit.getText());
-			poe_info[chosen_poe].rel_weight[chosen_channel] = parseFloat(chan_weight_edit.getText());
+			d.mass_1[chosen_channel] = parseFloat(mass1_edit.getText());
+			d.mass_2[chosen_channel] = parseFloat(mass2_edit.getText());
+			d.rel_weight[chosen_channel] = parseFloat(chan_weight_edit.getText());
 		}
 
-		// FillContribListBoxes(-1);
 
-		// setText other boxes since no P(E) will be selected after one is
-		// removed
-		//ion_chan_listbox.setListData(new String[0]);
+		// setText other boxes since no P(E) will be selected after one is removed
 		((DefaultListModel)ion_chan_listbox.getModel()).clear();
 		beta_edit.setText("");
-		//ion_chan_listbox.setListData(new String[0]);
 		mass1_edit.setText("");
 		mass2_edit.setText("");
 		chan_weight_edit.setText("");
@@ -398,12 +337,12 @@ public class ContribPOEsDialog extends JDialog implements ActionListener,
 		chan_weight_edit.setEnabled(false);
 		
 
-		old_sel_poe_num = -1; // No P(E) is currently selected
+		old_sel_poe = null; // No P(E) is currently selected
 	}
 
-	protected void FillIonChanListBox(int poe_number) {
+	protected void FillIonChanListBox(POECalcData poe) {
 		int current_num_channels, i;
-		current_num_channels = poe_info[poe_number].num_channels;
+		current_num_channels = poe.num_channels;
 		((DefaultListModel<String>)ion_chan_listbox.getModel()).clear();
 		if (current_num_channels > 0) {
 			//ion_channel_list = new String[current_num_channels];
@@ -428,35 +367,14 @@ public class ContribPOEsDialog extends JDialog implements ActionListener,
 		}
 	}
 
-	protected void FillContribListBoxes(int poe_number) { // new_poe is position
-															// of newly added
-															// P(E) in list box
-		int i, new_poe = 0;
-		int count;
-		POEData poe;
-
-		count = 0;
-		for (i = 0; i < num_total_poes; i++) {
-			poe = application.poes.get(i);
-			if (poe_info[i].is_included == false) {
-				((DefaultListModel<String>) non_contrib_poe_listbox.getModel())
-						.addElement(poe.title);
-			} else {
-				((DefaultListModel<String>) contrib_poe_listbox.getModel())
-						.addElement(poe.title);
-				if (i == poe_number)
-					new_poe = count;
-				count++;
-			}
+	protected void FillContribListBoxes() { // new_poe is position of newly added P(E) in list box
+		for (int i = 0; i < includedPOEs.size(); i++) {
+			((DefaultListModel<String>) contrib_poe_listbox.getModel()).addElement(includedPOEs.get(i).poe.title);
 		}
-
-		num_contrib_poes = count;
-		if (poe_number < 0) // Won't select a specific P(E) if -1 is passed to
-							// this function
-			return;
-		else {
-			contrib_poe_listbox.setSelectedIndex(new_poe);
-		}// -1 means ignore poe_number
+		
+		for (int i = 0; i < notIncludedPOEs.size(); i++) {
+			((DefaultListModel<String>) non_contrib_poe_listbox.getModel()).addElement(notIncludedPOEs.get(i).poe.title);
+		}
 	}
 
 	@Override
@@ -466,23 +384,23 @@ public class ContribPOEsDialog extends JDialog implements ActionListener,
 			// pass info back to brains and move on
 			// Send this new data to the Calc_data object
 			ID = true;
-			int chosen_poe, chosen_channel/* , i */;
+			int chosen_channel/* , i */;
 
 			// Get any data which is displayed in the dialog but may not be
 			// stored yet
 			// Set data in POE_calc_data for this selected P(E)
-			chosen_poe = GetSelContribPOE();
-			if (chosen_poe >= 0) {
+			POECalcData chosen_poe = GetSelContribPOE();
+			if (chosen_poe != null) {
 				chosen_channel = ion_chan_listbox.getSelectedIndex();
 				if (chosen_channel >= 0) {
-					poe_info[chosen_poe].mass_1[chosen_channel] = parseFloat(mass1_edit.getText());
-					poe_info[chosen_poe].mass_2[chosen_channel] = parseFloat(mass2_edit.getText());
-					poe_info[chosen_poe].rel_weight[chosen_channel] = parseFloat(chan_weight_edit.getText());
+					chosen_poe.mass_1[chosen_channel] = parseFloat(mass1_edit.getText());
+					chosen_poe.mass_2[chosen_channel] = parseFloat(mass2_edit.getText());
+					chosen_poe.rel_weight[chosen_channel] = parseFloat(chan_weight_edit.getText());
 				}
 			}
 
 			// Send this new data to the Calc_data object
-			calculation.SetPOECalcData(poe_info);
+			calculation.SetPOECalcData();
 			IsOpen = false;
 			this.dispose();
 		} else if (e.getSource().equals(cancel)) {
@@ -506,15 +424,15 @@ public class ContribPOEsDialog extends JDialog implements ActionListener,
 		// TODO Auto-generated method stub
 		if(e.getValueIsAdjusting()) return;
 		if (e.getSource().equals(ion_chan_listbox)) {
-			int chosen_poe, chosen_channel;
+			int chosen_channel;
 
-			chosen_poe = GetSelContribPOE();
-			if (chosen_poe < 0)
+			POECalcData chosen_poe = GetSelContribPOE();
+			if (chosen_poe == null)
 				return;
 		
-			poe_info[chosen_poe].mass_1[old_sel_ion_index] = parseFloat(mass1_edit.getText());
-			poe_info[chosen_poe].mass_2[old_sel_ion_index] = parseFloat(mass2_edit.getText());
-			poe_info[chosen_poe].rel_weight[old_sel_ion_index] = parseFloat(chan_weight_edit.getText());
+			chosen_poe.mass_1[old_sel_ion_index] = parseFloat(mass1_edit.getText());
+			chosen_poe.mass_2[old_sel_ion_index] = parseFloat(mass2_edit.getText());
+			chosen_poe.rel_weight[old_sel_ion_index] = parseFloat(chan_weight_edit.getText());
 
 			chosen_channel = ion_chan_listbox.getSelectedIndex();
 			if(chosen_channel < 0){
@@ -530,39 +448,35 @@ public class ContribPOEsDialog extends JDialog implements ActionListener,
 			mass2_edit.setEnabled(true);
 			chan_weight_edit.setEnabled(true);
 
-			mass1_edit
-					.setText("" + poe_info[chosen_poe].mass_1[chosen_channel]);
+			mass1_edit.setText("" + chosen_poe.mass_1[chosen_channel]);
 			mass2_edit
-					.setText("" + poe_info[chosen_poe].mass_2[chosen_channel]);
+					.setText("" + chosen_poe.mass_2[chosen_channel]);
 			chan_weight_edit.setText(""
-					+ poe_info[chosen_poe].rel_weight[chosen_channel]);
+					+ chosen_poe.rel_weight[chosen_channel]);
 
 			old_sel_ion_index = chosen_channel;
 		} else {
 			POEData poe;
 			int poe_number, chosen_channel = 0;
 
-			if (old_sel_poe_num >= 0) {
-				poe_info[old_sel_poe_num].beta_param = parseFloat(beta_edit.getText());
+			if (old_sel_poe != null) {
+				old_sel_poe.beta_param = parseFloat(beta_edit.getText());
 
 				chosen_channel = ion_chan_listbox.getSelectedIndex();
 				if (!ion_chan_listbox.isSelectionEmpty()) {
 					System.out.println("storing");
-					poe_info[old_sel_poe_num].mass_1[chosen_channel] = parseFloat(mass1_edit.getText());
-					poe_info[old_sel_poe_num].mass_2[chosen_channel] = parseFloat(mass2_edit.getText());
-					poe_info[old_sel_poe_num].rel_weight[chosen_channel] = parseFloat(chan_weight_edit.getText());
+					old_sel_poe.mass_1[chosen_channel] = parseFloat(mass1_edit.getText());
+					old_sel_poe.mass_2[chosen_channel] = parseFloat(mass2_edit.getText());
+					old_sel_poe.rel_weight[chosen_channel] = parseFloat(chan_weight_edit.getText());
 				}
 			}
 
 
-			poe_number = GetSelContribPOE();
-			System.out.println(old_sel_poe_num + ":" + poe_number);
+			POECalcData poeData= GetSelContribPOE();
 			poe_title_static.setText("");
 			if (contrib_poe_listbox.isSelectionEmpty()) {
 				numChan.setValue(1);
-				//ion_chan_listbox.setListData(new String[0]);
 				beta_edit.setText("0");
-				//ion_chan_listbox.setListData(new String[0]);
 				mass1_edit.setText("0");
 				mass2_edit.setText("0");
 				chan_weight_edit.setText("1");
@@ -575,11 +489,11 @@ public class ContribPOEsDialog extends JDialog implements ActionListener,
 				mass2_edit.setEnabled(false);
 				chan_weight_edit.setEnabled(false);
 
-				old_sel_poe_num = -1;
+				old_sel_poe = null;
 				return;
 			}
 
-			if (poe_info[poe_number].num_channels == 0) // Disable some things
+			if (poeData.num_channels == 0) // Disable some things
 			{
 				//ion_chan_listbox.setListData(new String[0]);
 				mass1_edit.setText("0");
@@ -592,27 +506,26 @@ public class ContribPOEsDialog extends JDialog implements ActionListener,
 				chan_weight_edit.setEnabled(false);
 			}
 
-			poe = application.poes.get(poe_number);
+			poe = poeData.poe;
 
 			poe_title = poe.title;
 			poe_title_static.setText(poe_title);
 			numChan.setEnabled(true);
-			numChan.setValue(poe_info[poe_number].num_channels);
+			numChan.setValue(poeData.num_channels);
 			old_num_channels = -1; // Used so new # of channels will be
 									// displayed
-			mass1_edit.setText("" + poe_info[poe_number].mass_1[chosen_channel]);
-			mass2_edit.setText("" + poe_info[poe_number].mass_2[chosen_channel]);
-			chan_weight_edit.setText("" + poe_info[poe_number].rel_weight[chosen_channel]);
+			mass1_edit.setText("" + poeData.mass_1[chosen_channel]);
+			mass2_edit.setText("" + poeData.mass_2[chosen_channel]);
+			chan_weight_edit.setText("" + poeData.rel_weight[chosen_channel]);
 
 			beta_edit.setEnabled(true);
 			beta_edit.setText("");
-			beta_edit.setText("" + poe_info[poe_number].beta_param);
+			beta_edit.setText("" + poeData.beta_param);
 
-			//ion_chan_listbox.setListData(new String[0]);
-			FillIonChanListBox(poe_number);
+			FillIonChanListBox(poeData);
 
 			// Make this current poe_number the old_poe_number for later use
-			old_sel_poe_num = poe_number;
+			old_sel_poe = poeData;
 			ion_chan_listbox.setSelectedIndex(0);
 		}
 
@@ -623,26 +536,25 @@ public class ContribPOEsDialog extends JDialog implements ActionListener,
 		// TODO Auto-generated method stub
 		System.out.println("Spinner");
 		int i, current_num_channels, num_old_poe_chans, last_chan;
-		int current_poe;
 		float[] mass_1_array;
 		float[] mass_2_array;
 		float[] chan_weight_array;
 
-		current_poe = GetSelContribPOE();
-		if (current_poe < 0) {
+		POECalcData current_poe = GetSelContribPOE();
+		if (current_poe == null) {
 			return;
 		}
 
 		// Get data for old POE_calc_data before changing # of ion_channels
 
 		current_num_channels = (int) numChan.getValue();
-		num_old_poe_chans = poe_info[current_poe].num_channels;
+		num_old_poe_chans = current_poe.num_channels;
 
 		if (num_old_poe_chans != current_num_channels) {
 			if (mass1_edit.isEnabled()) {
-				poe_info[current_poe].mass_1[old_sel_ion_index] = parseFloat(mass1_edit.getText());
-				poe_info[current_poe].mass_2[old_sel_ion_index] = parseFloat(mass2_edit.getText());
-				poe_info[current_poe].rel_weight[old_sel_ion_index] = parseFloat(chan_weight_edit.getText());
+				current_poe.mass_1[old_sel_ion_index] = parseFloat(mass1_edit.getText());
+				current_poe.mass_2[old_sel_ion_index] = parseFloat(mass2_edit.getText());
+				current_poe.rel_weight[old_sel_ion_index] = parseFloat(chan_weight_edit.getText());
 			}
 
 			mass_1_array = new float[current_num_channels];
@@ -653,9 +565,9 @@ public class ContribPOEsDialog extends JDialog implements ActionListener,
 			// Copy data from old P(E) data and then delete old stuff
 			for (i = 0; i < current_num_channels; i++) {
 				if (i < last_chan) {
-					mass_1_array[i] = poe_info[current_poe].mass_1[i];
-					mass_2_array[i] = poe_info[current_poe].mass_2[i];
-					chan_weight_array[i] = poe_info[current_poe].rel_weight[i];
+					mass_1_array[i] = current_poe.mass_1[i];
+					mass_2_array[i] = current_poe.mass_2[i];
+					chan_weight_array[i] = current_poe.rel_weight[i];
 				} else {
 					mass_1_array[i] = 1.0f;
 					mass_2_array[i] = 1.0f;
@@ -664,17 +576,17 @@ public class ContribPOEsDialog extends JDialog implements ActionListener,
 			}
 
 			if (num_old_poe_chans > 0) {
-				poe_info[current_poe].mass_1 = null;
-				poe_info[current_poe].mass_2 = null;
-				poe_info[current_poe].rel_weight = null;
+				current_poe.mass_1 = null;
+				current_poe.mass_2 = null;
+				current_poe.rel_weight = null;
 			}
 
 			// Set old poe_info to point to this new information
-			poe_info[current_poe].mass_1 = mass_1_array;
-			poe_info[current_poe].mass_2 = mass_2_array;
-			poe_info[current_poe].rel_weight = chan_weight_array;
+			current_poe.mass_1 = mass_1_array;
+			current_poe.mass_2 = mass_2_array;
+			current_poe.rel_weight = chan_weight_array;
 
-			poe_info[current_poe].num_channels = current_num_channels;
+			current_poe.num_channels = current_num_channels;
 
 			if(current_num_channels > num_old_poe_chans){
 				((DefaultListModel<String>) ion_chan_listbox.getModel()).addElement("Channel #"+(ion_chan_listbox.getModel().getSize()+1));

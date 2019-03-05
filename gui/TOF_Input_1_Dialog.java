@@ -289,7 +289,7 @@ public class TOF_Input_1_Dialog extends JDialog implements ActionListener {
 		polPane.add(getLabelledPanel(polarization_angle_edit,
 				"Polarization Angle"));
 		polPane.add(getLabelledPanel(degree_polarization_edit,
-				"Degrees Polarization"));
+				"Depolarization"));
 		polPane.add(change_polarization);
 
 		JPanel timePane = new JPanel();
