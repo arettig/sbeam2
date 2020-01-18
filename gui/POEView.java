@@ -141,6 +141,24 @@ public class POEView extends JInternalFrame implements InternalFrameListener, Ch
 		return list;
 	}
 	
+	// poe data has changed, update view accordingly
+	public void updatePOE(POEData poe) {
+		int seriesNum = this.associatedPOEs.indexOf(poe);
+		XYSeries series = POEDataset.getSeries(seriesNum);
+		
+		// replace points with new points
+		System.out.println(poe.poe_amplitudes.length);
+		System.out.println(series.getItemCount());
+		for(int i = 0; i < series.getItemCount(); i++) {
+			System.out.println(series.getDataItem(i).getXValue());
+		}
+		
+		for(int i = 0; i < poe.poe_amplitudes.length; i++) {
+			series.remove(i);
+			series.add(poe.energy_values[i], poe.poe_amplitudes[i]);
+		}
+	}
+	
 	
 	
 	

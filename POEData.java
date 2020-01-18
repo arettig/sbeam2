@@ -120,10 +120,32 @@ public class POEData {
 		return maxVal;
 	}
 	
+	// make sure max value is 1
+	public void normalizePOE(float newVal) {
+		// trapezoid rule to get total probability
+		float total = 0;
+		for(int i = 0; i < num_points-1; i++) { 
+			total += (poe_amplitudes[i] + poe_amplitudes[i+1]) * energy_spacing / 2.0;
+		}
+		
+		// normalize total probability to 1
+		for(int i = 0; i < num_points; i++) { // normalize all points
+			poe_amplitudes[i] /=  total;
+		}
+
+		// update the views
+		for(int i = 0; i < this.AssociatedPOEViews.size(); i++) {
+			this.AssociatedPOEViews.get(i).updatePOE(this);
+		}
+	}
+	
+	// called by view after point is dragged
 	public void updatePOE(float x, float newY){
 		int index = (int) ((x - energy_values[0]) / energy_spacing); //find which point has changed 		
  		poe_amplitudes[index] = newY; //change poe data
  		
+ 		normalizePOE(newY);
+
 	}
 	
 	public void calcTOFDelta(float x){
@@ -140,6 +162,7 @@ public class POEData {
  		}
 	}
 	
+	// called when poe view is changed to update calculated tofs
 	public void FindNewTOFs(float new_amplitude, boolean is_endpoint){
 		for(int i = 0; i < AssociatedCalcs.size(); i++)
 		{
