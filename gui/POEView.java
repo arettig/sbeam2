@@ -48,7 +48,6 @@ public class POEView extends JInternalFrame implements InternalFrameListener, Ch
 	protected XYPlot POEPlot;
 	protected ChartPanel chartPanel;
 	protected JFreeChart xyScatter;
-	protected XYItemRenderer renderer;
 	
 	protected XYItemEntity dragPoint;
 
@@ -65,7 +64,6 @@ public class POEView extends JInternalFrame implements InternalFrameListener, Ch
 		xyScatter = ChartFactory.createScatterPlot(null, "Energy", "Units", POEDataset, PlotOrientation.VERTICAL, false, false, false);
 		chartPanel = new ChartPanel(xyScatter);
 		POEPlot = xyScatter.getXYPlot( );
-		POEPlot.setRenderer(renderer); 
 		setContentPane(chartPanel); 
 	    POEPlot.setRenderer(new XYLineAndShapeRenderer(false, true) {
 
@@ -278,8 +276,9 @@ public class POEView extends JInternalFrame implements InternalFrameListener, Ch
 		if(dragPoint != null){
 			// change the TOFs
 			XYSeries series = POEDataset.getSeries(dragPoint.getSeriesIndex());
-			float x = series.getDataItem(dragPoint.getItem()).getX().floatValue();
-			float newY = series.getDataItem(dragPoint.getItem()).getY().floatValue();
+			double x = series.getDataItem(dragPoint.getItem()).getXValue();
+			double newY = chartPanel.getChart().getXYPlot().getRangeAxis().java2DToValue(e.getTrigger().getY(), chartPanel.getChartRenderingInfo().getPlotInfo().getDataArea(), chartPanel.getChart().getXYPlot().getRangeAxisEdge());
+
 			POEData poe = associatedPOEs.get(0); //probably fix this
 			int index = (int) ((x - poe.energy_values[0]) / poe.energy_spacing); //find which point has changed
 			
@@ -290,8 +289,8 @@ public class POEView extends JInternalFrame implements InternalFrameListener, Ch
 			
 			
 			boolean endpoint = index == 0 || index == poe.num_points-1;
-	 		poe.updatePOE(x, newY);
-	 		poe.FindNewTOFs(newY, endpoint);
+	 		poe.updatePOE((float) x, (float) newY);
+	 		poe.FindNewTOFs((float) newY, endpoint);
 	 		
 	 		//scale the axis
 	 		float maximum = poe.maxValue();
@@ -317,13 +316,12 @@ public class POEView extends JInternalFrame implements InternalFrameListener, Ch
 	public void chartMouseMoved(ChartMouseEvent e) {
 		// TODO Auto-generated method stub
 		if(dragPoint != null){
-			double yVal = POEPlot.getRangeAxis().java2DToValue(e.getTrigger().getY(), chartPanel.getChartRenderingInfo().getPlotInfo().getDataArea(), POEPlot.getRangeAxisEdge());
-			XYSeries series = POEDataset.getSeries(dragPoint.getSeriesIndex());
-			XYDataItem item = series.getDataItem(dragPoint.getItem());
-			item.setY(yVal);
-			chartPanel.repaint();
+			double xVal = POEDataset.getSeries(dragPoint.getSeriesIndex()).getDataItem(dragPoint.getItem()).getXValue();
+			double yVal = chartPanel.getChart().getXYPlot().getRangeAxis().java2DToValue(e.getTrigger().getY(), chartPanel.getChartRenderingInfo().getPlotInfo().getDataArea(), chartPanel.getChart().getXYPlot().getRangeAxisEdge());
+			POEDataset.getSeries(dragPoint.getSeriesIndex()).remove(dragPoint.getItem());
+			POEDataset.getSeries(dragPoint.getSeriesIndex()).add(xVal, yVal);
+			//chartPanel.repaint();
 		}
-		
 	}
 
 }
