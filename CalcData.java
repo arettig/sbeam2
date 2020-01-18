@@ -1552,6 +1552,7 @@ public class CalcData {
 		float inverse_lab_vel_spacings;
 		float velocity_point, lower_vel_prob, this_tof_time, this_ionizer_count, this_distance;
 		float this_time_count, this_time_inverse, real_lab_vel;
+		System.out.println(data_for_poes.size());
 
 		POECalcData current_poe_data = data_for_poes.get(poe_number);
 

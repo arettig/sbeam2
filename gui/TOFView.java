@@ -117,7 +117,6 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 	
 	public void reloadCalcTOF(TOFData tof){
 		int index = associatedTOFs.indexOf(tof);
-		System.out.println("Reloading series at index " + index);
 		removeTOFFromView(index);
 		addCalcTOFToView(tof);
 	}

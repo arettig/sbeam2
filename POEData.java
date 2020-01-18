@@ -139,7 +139,7 @@ public class POEData {
 		}
 	}
 	
-	// called by view after point is dragged
+	// update data to match view after a point is dragged
 	public void updatePOE(float x, float newY){
 		int index = (int) ((x - energy_values[0]) / energy_spacing); //find which point has changed 		
  		poe_amplitudes[index] = newY; //change poe data
@@ -154,7 +154,6 @@ public class POEData {
  		for(int calcInd = 0; calcInd < AssociatedCalcs.size(); calcInd++){
  			CalcData calc = AssociatedCalcs.get(calcInd);
  			int numTOFs = calc.num_tofs;
- 			
  			
  			TOFData[] tofsForCalc = calc.calculated_tofs;
  			//calc.calculated_tofs = tofsForCalc; //maybe change this?

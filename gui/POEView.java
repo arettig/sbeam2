@@ -146,13 +146,7 @@ public class POEView extends JInternalFrame implements InternalFrameListener, Ch
 		int seriesNum = this.associatedPOEs.indexOf(poe);
 		XYSeries series = POEDataset.getSeries(seriesNum);
 		
-		// replace points with new points
-		System.out.println(poe.poe_amplitudes.length);
-		System.out.println(series.getItemCount());
-		for(int i = 0; i < series.getItemCount(); i++) {
-			System.out.println(series.getDataItem(i).getXValue());
-		}
-		
+		// replace points with new points		
 		for(int i = 0; i < poe.poe_amplitudes.length; i++) {
 			series.remove(i);
 			series.add(poe.energy_values[i], poe.poe_amplitudes[i]);
@@ -174,8 +168,6 @@ public class POEView extends JInternalFrame implements InternalFrameListener, Ch
 		POEData poe = sb.poes.get(poe_list_dialog.GetChosenIndex()[0]);
 		System.out.println("Adding " + poe.title);
 		addPOEToView(poe);
-		
-
 	}
 	
 	protected void RemovePEFromDisplay() {
@@ -297,7 +289,7 @@ public class POEView extends JInternalFrame implements InternalFrameListener, Ch
 			double x = series.getDataItem(dragPoint.getItem()).getXValue();
 			double newY = chartPanel.getChart().getXYPlot().getRangeAxis().java2DToValue(e.getTrigger().getY(), chartPanel.getChartRenderingInfo().getPlotInfo().getDataArea(), chartPanel.getChart().getXYPlot().getRangeAxisEdge());
 
-			POEData poe = associatedPOEs.get(0); //probably fix this
+			POEData poe = associatedPOEs.get(dragPoint.getSeriesIndex()); 
 			int index = (int) ((x - poe.energy_values[0]) / poe.energy_spacing); //find which point has changed
 			
 			//extrema handling
@@ -334,11 +326,18 @@ public class POEView extends JInternalFrame implements InternalFrameListener, Ch
 	public void chartMouseMoved(ChartMouseEvent e) {
 		// TODO Auto-generated method stub
 		if(dragPoint != null){
+			// replace point to update view
 			double xVal = POEDataset.getSeries(dragPoint.getSeriesIndex()).getDataItem(dragPoint.getItem()).getXValue();
 			double yVal = chartPanel.getChart().getXYPlot().getRangeAxis().java2DToValue(e.getTrigger().getY(), chartPanel.getChartRenderingInfo().getPlotInfo().getDataArea(), chartPanel.getChart().getXYPlot().getRangeAxisEdge());
-			POEDataset.getSeries(dragPoint.getSeriesIndex()).remove(dragPoint.getItem());
-			POEDataset.getSeries(dragPoint.getSeriesIndex()).add(xVal, yVal);
-			//chartPanel.repaint();
+			if(yVal < 0) yVal = 0;
+			//POEDataset.getSeries(dragPoint.getSeriesIndex()).remove(dragPoint.getItem());
+			//POEDataset.getSeries(dragPoint.getSeriesIndex()).add(xVal, yVal);
+			
+			// update associated tofs
+			POEData poe = associatedPOEs.get(dragPoint.getSeriesIndex()); 
+			boolean endpoint = dragPoint.getSeriesIndex() == 0 || dragPoint.getSeriesIndex() == POEDataset.getSeriesCount()-1;
+	 		poe.updatePOE((float) xVal, (float) yVal);
+	 		poe.FindNewTOFs((float) yVal, endpoint);
 		}
 	}
 

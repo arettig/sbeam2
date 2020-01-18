@@ -280,11 +280,13 @@ public class SBApp {
 
 		is.nextLine();
 		num_loaded_poes = is.nextInt();
+		System.out.println("loading " + num_loaded_poes + " poes");
 		for (i = 0; i < num_loaded_poes; i++) {
 			// Get a line of "\n"
 			temp_string = is.nextLine();
 			new_poe = new POEData();
 			new_poe = POEData.in(is);
+			new_poe.POE_num = poes.size();
 			poes.add(new_poe);
 
 			temp_string = is.nextLine();
@@ -593,6 +595,7 @@ public class SBApp {
 		poe.poe_amplitudes = energy_amplitudes;
 		poe.energy_values = energy_values;
 		poe.energy_spacing = energy_values[1] - energy_values[0];
+		poe.POE_num = poes.size();
 	
 
 		
