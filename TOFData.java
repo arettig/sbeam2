@@ -409,7 +409,7 @@ public class TOFData {
 		//change all the views
 		for(int viewInd = 0; viewInd < AssociatedTOFViews.size(); viewInd++){
 			TOFView view = AssociatedTOFViews.get(viewInd);
-			view.reloadCalcTOF(this);
+			view.reloadTOF(this);
 		}
 		
 		delta_tof_poe_amplitude = poe_new_amplitude; // change for real time updating

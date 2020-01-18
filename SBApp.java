@@ -375,7 +375,7 @@ public class SBApp {
 		
 		time_of_flight.loadFromInputDialog(tof_input_1);
 		
-		//time_of_flight.SetRealFlightTime();
+		time_of_flight.SetRealFlightTime();
 		
 		//Create a View for TOF
 		TOFView t = new TOFView(this, mf);

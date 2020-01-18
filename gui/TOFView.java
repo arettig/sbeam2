@@ -82,6 +82,11 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 	
 	
 	public void addTOFToView(TOFData tof){
+		if(!tof.is_real_TOF) {
+			addCalcTOFToView(tof);
+			return;
+		}
+		
 		associatedTOFs.add(tof);
 		XYSeries tofSeries = new XYSeries(tof.title);
 		for(int i=0; i < tof.actual_flight_time_micro.length; i++){
@@ -99,8 +104,9 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 		associatedTOFs.add(tof);
 		
 		//get scaling factor
+		System.out.println(associatedTOFs.get(0).actual_flight_time_micro.length);
 		float[] maxMin = tof.GetMaxMinCounts(tof.actual_flight_time_micro[0], tof.actual_flight_time_micro[tof.actual_flight_time_micro.length-1]);
-		float[] totalMaxMin = associatedTOFs.get(0).GetMaxMinCounts(associatedTOFs.get(0).actual_flight_time_micro[0], associatedTOFs.get(0).actual_flight_time_micro[tof.actual_flight_time_micro.length-1]);
+		float[] totalMaxMin = associatedTOFs.get(0).GetMaxMinCounts(associatedTOFs.get(0).actual_flight_time_micro[0], associatedTOFs.get(0).actual_flight_time_micro[associatedTOFs.get(0).actual_flight_time_micro.length-1]); // fix this
 		float scaling = totalMaxMin[0]/maxMin[0];
 		
 		XYSeries tofSeries = new XYSeries(tof.title);
@@ -115,10 +121,10 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 		this.title += (this.title.isEmpty() ? "" : " && ") + tof.title;
 	}
 	
-	public void reloadCalcTOF(TOFData tof){
+	public void reloadTOF(TOFData tof){
 		int index = associatedTOFs.indexOf(tof);
 		removeTOFFromView(index);
-		addCalcTOFToView(tof);
+		addTOFToView(tof);
 	}
 	
 	public void removeTOFFromView(int index){
@@ -222,6 +228,33 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 			associatedTOFs.get(chosen_index).time_of_flight_color = c;
 			TOFPlot.getRendererForDataset(TOFDataset).setSeriesPaint(chosen_index, c);
 		}
+	}
+	
+	protected void EditViewTOFParameters() {
+		// pick a tof from this view
+		String[] tofList = getDispTOFList();
+		List_Dialog tof_list_dialog = new List_Dialog(mainWindow, tofList, 1);
+		tof_list_dialog.SetCaption("Choose a TOF to edit:");
+		tof_list_dialog = new List_Dialog(mainWindow, tofList, 1);
+
+		tof_list_dialog.Execute();
+		if(!tof_list_dialog.ID) return; //check if ok clicked
+		int chosen_index = tof_list_dialog.GetChosenIndex()[0];
+		
+		TOFData tof = this.associatedTOFs.get(chosen_index);
+		
+		
+		//Allow User to input params for TOF
+		TOF_Input_1_Dialog tof_input_1 = new TOF_Input_1_Dialog(this.mainWindow, tof);
+		tof_input_1.execute();
+		if(tof_input_1.ID == false){
+			return;
+		}
+		
+		tof.loadFromInputDialog(tof_input_1);
+		tof.SetRealFlightTime();
+		reloadTOF(tof);
+
 	}
 	
 	
