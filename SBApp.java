@@ -549,6 +549,77 @@ public class SBApp {
 	}
 	
 	
+	public void OutputTOFforGraphing() {
+		// pick a tof from this view
+		TOFData tof;
+		if(this.tofs.size() == 1) {
+			tof = this.tofs.get(0);
+		}else {
+			String[] tofList = getAllTOFList();
+			List_Dialog tof_list_dialog = new List_Dialog(mf, tofList, 1);
+			tof_list_dialog.SetCaption("Choose a TOF to output:");
+
+			tof_list_dialog.Execute();
+			// check
+			if(!tof_list_dialog.ID) return;
+			
+			tof = tofs.get(tof_list_dialog.GetChosenIndex()[0]);
+		}
+		
+		JFileChooser fc = new JFileChooser();
+		fc.setFileFilter(new FileNameExtensionFilter("tgr file", "tgr"));
+		int returnVal = fc.showSaveDialog(this.mf);
+		if(returnVal != JFileChooser.APPROVE_OPTION){
+			return;
+		}
+		File f = fc.getSelectedFile();
+		if (!f.getName().endsWith(".tgr")) {
+		    f = new File(f.getAbsolutePath() + ".tgr");  
+		}
+
+		String output = "";
+		
+		if(this.instrParam.isNumDensity) {
+			output += "Flight time (µs),     N(t) (arb. units)\n";
+		}else {
+			output += "Flight time (µs),     I(t) (arb. units)\n";
+		}
+		
+		if(tof.is_real_TOF) {
+			for(int i = 0; i < tof.num_tot_channels; i++) {
+				output += tof.actual_flight_time_micro[i] + ",     " + tof.channel_counts[i] + "\n";
+			}
+		}else {
+			for(int i = 0; i < tof.num_tot_channels; i++) {
+				output += tof.actual_flight_time_micro[i] + ",     " + tof.channel_counts[i];
+				for(int j = 0; j < this.poes.size(); j++) {
+					if(tof.individual_tofs[j] != null) {
+						int numChans = tof.number_channels[j];
+						if(numChans == 1) numChans = 0;  // Don't draw TOF for the individual channel if only one channel exists
+						for(int k = numChans; k >= 0; k--) { // Backwards, so total P(E) TOF drawn last
+							if((k !=  0) || (tof.number_included_poes > 1)) { // i.e. skip plotting individual TOFs for each contributing P(E) if only one contributes
+								output += ",     " + tof.individual_tofs[j][k][i];
+							}
+						}
+					}
+				}
+			}
+			output += "\n";
+		}
+		
+		try {
+			f.createNewFile();
+			FileWriter fw;
+			fw = new FileWriter(f);
+			BufferedWriter bw = new BufferedWriter(fw);
+
+			bw.write(output);
+			bw.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
 	
 	
 	

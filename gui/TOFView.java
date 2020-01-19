@@ -4,13 +4,16 @@ import java.awt.Color;
 import java.awt.Dimension;
 
 import java.awt.event.MouseEvent;
+import java.io.File;
 import java.util.ArrayList;
 
 import javax.swing.JColorChooser;
+import javax.swing.JFileChooser;
 import javax.swing.JInternalFrame;
 import javax.swing.event.InternalFrameEvent;
 import javax.swing.event.InternalFrameListener;
 import javax.swing.event.MouseInputListener;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
@@ -232,18 +235,22 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 	
 	protected void EditViewTOFParameters() {
 		// pick a tof from this view
-		String[] tofList = getDispTOFList();
-		List_Dialog tof_list_dialog = new List_Dialog(mainWindow, tofList, 1);
-		tof_list_dialog.SetCaption("Choose a TOF to edit:");
-		tof_list_dialog = new List_Dialog(mainWindow, tofList, 1);
+		TOFData tof;
+		if(this.associatedTOFs.size() == 1) {
+			tof = this.associatedTOFs.get(0);
+		}else {
+			String[] tofList = getDispTOFList();
+			List_Dialog tof_list_dialog = new List_Dialog(mainWindow, tofList, 1);
+			tof_list_dialog.SetCaption("Choose a TOF to edit:");
+			tof_list_dialog = new List_Dialog(mainWindow, tofList, 1);
 
-		tof_list_dialog.Execute();
-		if(!tof_list_dialog.ID) return; //check if ok clicked
-		int chosen_index = tof_list_dialog.GetChosenIndex()[0];
-		
-		TOFData tof = this.associatedTOFs.get(chosen_index);
-		
-		
+			tof_list_dialog.Execute();
+			if(!tof_list_dialog.ID) return; //check if ok clicked
+			int chosen_index = tof_list_dialog.GetChosenIndex()[0];
+			
+			tof = this.associatedTOFs.get(chosen_index);
+		}
+
 		//Allow User to input params for TOF
 		TOF_Input_1_Dialog tof_input_1 = new TOF_Input_1_Dialog(this.mainWindow, tof);
 		tof_input_1.execute();
@@ -252,9 +259,9 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 		}
 		
 		tof.loadFromInputDialog(tof_input_1);
-		tof.SetIonFlightTime(sb.instrParam.ionFlightConst);	
 		reloadTOF(tof);
 	}
+	
 	
 	
 	
