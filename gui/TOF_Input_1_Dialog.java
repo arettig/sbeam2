@@ -103,7 +103,8 @@ public class TOF_Input_1_Dialog extends JDialog implements ActionListener {
 		dwell_time_edit.setText("" + tof.dwell);
 		dwell_time_scale.setSelectedItem(tof.dwell_scale);
 		trigger_offset_edit.setText("" + tof.offset);
-		
+		dwell_time_scale.setSelectedItem(tof.dwell_scale);
+		trigger_scale.setSelectedItem(tof.offset_scale);
 
 		
 	}
