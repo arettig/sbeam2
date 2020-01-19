@@ -252,9 +252,8 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 		}
 		
 		tof.loadFromInputDialog(tof_input_1);
-		tof.SetRealFlightTime();
+		tof.SetIonFlightTime(sb.instrParam.ionFlightConst);	
 		reloadTOF(tof);
-
 	}
 	
 	

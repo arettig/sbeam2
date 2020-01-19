@@ -325,6 +325,10 @@ public class SBApp {
 		instrParam.isNumDensity = instr_params.isNumDensity();
 		
 		InstParamsSet = true;
+		
+		for(int i = 0; i < this.tofs.size(); i++) {
+			this.tofs.get(i).SetRealFlightTime();
+		}
 	}
 	
 	
@@ -375,7 +379,7 @@ public class SBApp {
 		
 		time_of_flight.loadFromInputDialog(tof_input_1);
 		
-		time_of_flight.SetRealFlightTime();
+		//time_of_flight.SetRealFlightTime();
 		
 		//Create a View for TOF
 		TOFView t = new TOFView(this, mf);
