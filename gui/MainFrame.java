@@ -170,6 +170,9 @@ public class MainFrame extends JFrame implements ActionListener, FocusListener{
 		item = new JMenuItem("Output P(E) to File");
 		item.addActionListener(this);
 		menu.add(item);
+		item = new JMenuItem("Output P(E) for Graphing");
+		item.addActionListener(this);
+		menu.add(item);
 		item = new JMenuItem("Open & Display *.poe File");
 		item.addActionListener(this);
 		menu.add(item);

@@ -739,7 +739,7 @@ public class SBApp {
 		//choose save location
 		int[] index_array;
 		JFileChooser fc = new JFileChooser();
-		fc.setFileFilter(new FileNameExtensionFilter("UFC file", "ufc"));
+		fc.setFileFilter(new FileNameExtensionFilter("poe file", "poe"));
 		int returnVal = fc.showSaveDialog(mf);
 		if (returnVal != JFileChooser.APPROVE_OPTION) {
 			return;
@@ -786,7 +786,54 @@ public class SBApp {
 		
 		poes.remove(poe);
 	}
+	
+	public void OutputPEforGraphing() {
+		// pick a poe from this view
+		POEData poe;
+		if(this.poes.size() == 1) {
+			poe = this.poes.get(0);
+		}else {
+			String[] poeList = getAllPOEList();
+			List_Dialog poe_list_dialog = new List_Dialog(mf, poeList, 1);
+			poe_list_dialog.SetCaption("Choose a P(E) to output:");
 
+			poe_list_dialog.Execute();
+			if(!poe_list_dialog.ID) return; // check
+			
+			poe = poes.get(poe_list_dialog.GetChosenIndex()[0]);
+		}
+		
+		JFileChooser fc = new JFileChooser();
+		fc.setFileFilter(new FileNameExtensionFilter("pgr file", "pgr"));
+		int returnVal = fc.showSaveDialog(this.mf);
+		if(returnVal != JFileChooser.APPROVE_OPTION){
+			return;
+		}
+		File f = fc.getSelectedFile();
+		if (!f.getName().endsWith(".pgr")) {
+		    f = new File(f.getAbsolutePath() + ".pgr");  
+		}
+
+		String output = "";
+		
+		output += "Trans. Energy (kcal/mol),     P(E)\n";
+		for(int i = 0; i < poe.num_points; i++) {
+			output += poe.energy_values[i] + ",     " + poe.poe_amplitudes[i] + "\n";
+		}
+		
+		try {
+			f.createNewFile();
+			FileWriter fw;
+			fw = new FileWriter(f);
+			BufferedWriter bw = new BufferedWriter(fw);
+
+			bw.write(output);
+			bw.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
 	
 	
 	
