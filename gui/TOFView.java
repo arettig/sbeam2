@@ -2,8 +2,9 @@ package sbeam2.gui;
 
 import java.awt.Color;
 import java.awt.Dimension;
-
+import java.awt.Shape;
 import java.awt.event.MouseEvent;
+import java.awt.geom.Ellipse2D;
 import java.io.File;
 import java.util.ArrayList;
 
@@ -25,6 +26,7 @@ import org.jfree.chart.renderer.xy.XYItemRenderer;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
+import org.jfree.util.ShapeUtilities;
 
 import sbeam2.gui.Param_Dialog;
 import sbeam2.gui.MainFrame;
@@ -96,8 +98,12 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 			tofSeries.add(tof.actual_flight_time_micro[i], tof.channel_counts[i]);
 		}
 		TOFDataset.addSeries(tofSeries);
+		
+		Shape marker = new Ellipse2D.Double(0, 0, 3, 3);
 		((XYLineAndShapeRenderer)TOFPlot.getRenderer()).setSeriesLinesVisible(TOFDataset.getSeriesCount()-1, false);
 		((XYLineAndShapeRenderer)TOFPlot.getRenderer()).setSeriesShapesVisible(TOFDataset.getSeriesCount()-1, true);
+		TOFPlot.getRenderer().setSeriesShape(TOFDataset.getSeriesCount() - 1, marker);
+
 		
 		tof.AssociatedTOFViews.add(this);
 		this.title += (this.title.isEmpty() ? "" : " && ") + tof.title;
@@ -107,7 +113,6 @@ public class TOFView extends JInternalFrame implements MouseInputListener, Inter
 		associatedTOFs.add(tof);
 		
 		//get scaling factor
-		System.out.println(associatedTOFs.get(0).actual_flight_time_micro.length);
 		float[] maxMin = tof.GetMaxMinCounts(tof.actual_flight_time_micro[0], tof.actual_flight_time_micro[tof.actual_flight_time_micro.length-1]);
 		float[] totalMaxMin = associatedTOFs.get(0).GetMaxMinCounts(associatedTOFs.get(0).actual_flight_time_micro[0], associatedTOFs.get(0).actual_flight_time_micro[associatedTOFs.get(0).actual_flight_time_micro.length-1]); // fix this
 		float scaling = totalMaxMin[0]/maxMin[0];

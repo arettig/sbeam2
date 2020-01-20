@@ -70,9 +70,9 @@ public class POEView extends JInternalFrame implements InternalFrameListener, Ch
 	        @Override
 	        public Shape getItemShape(int row, int col) {
 	            if (dragPoint != null && row == dragPoint.getSeriesIndex() & col == dragPoint.getItem()) {
-	                return ShapeUtilities.createDiagonalCross(5, 2);
+	                return ShapeUtilities.createDiagonalCross(3, 1);
 	            } else {
-	                return new Ellipse2D.Double(-5,-5,10,10);
+	                return new Ellipse2D.Double(-5,-5,3,3);
 	            }
 	        }
 	        
